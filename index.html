@@ -1,6 +1,6 @@
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>APEX</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,6 +17,12 @@
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-auth-compat.min.js"></script>
 
 <style>
+html, body { touch-action: manipulation; }
+.nap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--fg2); }
+.nap-have b { color: var(--fg); }
+.nap-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nap-chip { min-width: 64px; }
+.tip-ref { background: var(--s2); border: 1px solid var(--s3); color: var(--fg2); border-radius: 8px; font-size: 12px; padding: 2px 9px; margin-left: 6px; cursor: pointer; vertical-align: middle; }
 /* ── tokens ── */
 :root {
   color-scheme: dark;
@@ -1098,6 +1104,10 @@ const MOOD_EMOJI = { 1:'😩', 2:'😕', 3:'😐', 4:'🙂', 5:'😄' };
 const TYPE_COLOR = { ice:'#5bc8f5', gym:'#ff8c3d', video:'#b47cf5', rec:'#3dff8c', check:'#3dff8c', rest:'#9090b0' };
 const TYPE_LABEL = { ice:'На льду', gym:'Физо', video:'Видео', rec:'Восстановление', check:'Опросник', rest:'Отдых' };
 
+// ── запрет пинч-зума (iOS) ─────────────────────
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+
 // ── Storage (localStorage + Firestore sync) ────────
 function todayKey() { return localDay(Date.now()); }
 
@@ -1253,7 +1263,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 28.10.2026</span></div>
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 29.10.2026</span></div>
       <div class="st-sub" style="margin-bottom:0">Утреннее напоминание: на iPhone «Команды» → «Автоматизация» → «Время суток» → «Открыть приложение».</div></div>`;
 }
 function streakDays() {
@@ -1337,7 +1347,14 @@ function renderHome() {
       <button onclick="goTab('plan');polarPick('${esc(pend.id)}')">Дополнить</button></div>`;
   }
 
-  // ── быстрые действия
+  // ── дневной сон: быстрое добавление днём
+  const nap = entry && entry.napH > 0 ? entry.napH : 0;
+  const napLbl = nap ? (nap < 1 ? Math.round(nap * 60) + ' мин' : (nap % 1 === 0 ? nap : String(nap).replace('.', ',')) + ' ч') : '';
+  html += `<div class="card"><div class="card-label">😴 Дневной сон</div><div id="nap-body">${
+    nap
+      ? `<div class="nap-row"><span class="nap-have">Сегодня: <b>${napLbl}</b> — учту в анализе</span><button class="btn-home" onclick="napOpen()">Изменить</button></div>`
+      : `<div class="nap-row"><span>Спал днём? Отметь — учту в анализе</span><button class="btn-home" onclick="napOpen()">＋ Отметить</button></div>`
+  }</div></div>`;
 
   // ── сегодня
   html += todayW.length
@@ -1421,8 +1438,8 @@ function dataTips() {
   const D = buildDays();
   if (D.length < 2) return [];
   const out = [], last = D.length - 1;
-  const sh = D.slice(-3).map(d => d.e && d.e.sleepH > 0 ? d.e.sleepH : null).filter(v => v !== null);
-  if (sh.length >= 2 && avgOf(sh) < 7) out.push(`😴 В последние ночи ты спал в среднем ${avgOf(sh).toFixed(1)} ч, меньше 7. Если можно, сегодня ложись пораньше.`);
+  const sh = D.slice(-3).map(d => d.e && (d.e.sleepH > 0 || d.e.napH > 0) ? (d.e.sleepH || 0) + (d.e.napH || 0) : null).filter(v => v !== null);
+  if (sh.length >= 2 && avgOf(sh) < 7) out.push(`😴 Суммарный сон за последние дни — в среднем ${avgOf(sh).toFixed(1)} ч, меньше 7. Ложись пораньше или лови короткий дневной.`);
   const s2 = D.slice(-2).map(d => d.e ? d.e.sleep : null);
   if (s2.length === 2 && s2.every(v => v !== null && v <= 2)) out.push('😴 Два дня подряд сон оценён на 1–2. Сегодня лучше без лишней нагрузки.');
   let streak = 0;
@@ -1447,12 +1464,62 @@ function dataTips() {
 function renderTips() {
   const el = document.getElementById('tip-wrap');
   if (!el) return;
-  const now = new Date();
-  const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
   const tips = dataTips();
   el.innerHTML = `<div class="card"><div class="card-label">💡 Подсказки на сегодня</div>`
     + tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('')
-    + `<div class="tip-fact">📌 <b>Факт дня.</b> ${esc(FACTS[doy % FACTS.length])}</div></div>`;
+    + `<div class="tip-fact" id="tip-fact">📌 <b>Факт дня.</b> ${esc(aiFactGet())} <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button></div></div>`;
+  aiFactMaybe();
+}
+
+// ── ИИ-факт дня: генерируется раз в день, кнопка ⟳ делает новый ──
+function aiFactStore() { try { return JSON.parse(localStorage.getItem('gt_aifact') || '{}'); } catch { return {}; } }
+function aiFactSave(s) { try { localStorage.setItem('gt_aifact', JSON.stringify(s)); } catch {} }
+function aiFactGet() {
+  const s = aiFactStore();
+  if (s.d === todayKey() && s.t) return s.t;
+  const now = new Date();
+  const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  return FACTS[doy % FACTS.length];
+}
+async function aiFactFetch(force) {
+  if (!AI.key.get() || window._aifactBusy) return;
+  const s = aiFactStore();
+  if (!force && s.d === todayKey() && s.t) return;
+  window._aifactBusy = true;
+  const el = document.getElementById('tip-fact');
+  if (el) el.innerHTML = '🤖 Придумываю новый факт…';
+  const prev = (s.hist || []).slice(-5).map(x => '· ' + x).join('\n');
+  const prompt = 'Придумай ОДИН короткий удивительный научно подтверждённый факт для хоккейного вратаря — спортсмена. '
+    + 'Тема на выбор: наука о сне и восстановлении, нервная система и скорость реакции, зрение и чтение игры, психология и концентрация, физиология холода и льда, спортивная наука, эволюция вратарского стиля. '
+    + 'Требования: конкретика — число, срок, механизм или упоминание исследования; 1–2 предложения; по-русски; никакого воды и банальностей («пейте воду», «меньше сидите в телефоне» — такое не присылать); без приветствий и вступлений — сразу сам факт.'
+    + (prev ? '\n\nУже были раньше (не повторяй их и не перефразируй):\n' + prev : '');
+  try {
+    const txt = await aiCall([{ role: 'system', content: aiSys() }, { role: 'user', content: prompt }], { maxTokens: 180, temperature: 1.0 });
+    const t = (txt || '').trim().replace(/^[\s"«»]+|[\s"«»\.]+$/g, '');
+    if (t) {
+      const s2 = aiFactStore();
+      aiFactSave({ d: todayKey(), t, hist: (s2.hist || []).concat([t]).slice(-5) });
+      const el2 = document.getElementById('tip-fact');
+      if (el2) el2.innerHTML = '📌 <b>Факт дня.</b> ' + esc(t) + ' <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button>';
+    }
+  } catch (e) { /* нет сети или ключа — остаётся статический факт */ }
+  window._aifactBusy = false;
+}
+function aiFactMaybe() { const s = aiFactStore(); if (!(s.d === todayKey() && s.t)) aiFactFetch(false); }
+
+// ── Дневной сон: быстрое добавление днём ──
+function napOpen() {
+  const b = document.getElementById('nap-body');
+  if (!b) return;
+  const opts = [[15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 ч'], [90, '1,5 ч'], [120, '2 ч']];
+  b.innerHTML = '<div class="nap-chips">' + opts.map(o => `<button class="btn-home nap-chip" onclick="napSet(${o[0]})">${o[1]}</button>`).join('') + '</div>';
+}
+function napSet(min) {
+  const h = Math.round(min / 15) / 4;
+  const e = getTodayEntry();
+  const entry = e ? Object.assign({}, e, { napH: h }) : { ts: Date.now(), napH: h };
+  saveEntry(entry);
+  renderHome();
 }
 
 // ── Сводка для Claude ──
@@ -1465,11 +1532,13 @@ function buildSummary() {
   D.forEach(d => {
     const e = d.e;
     let line = d.k + ': ';
-    if (e) {
-      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', средний пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
+    if (e && e.sleep != null) {
+      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.napH ? ', дневной сон ' + e.napH + ' ч' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', средний пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
       const z = (e.zones || []).filter(x => x !== 'none').map(x => ZONES_LABEL[x] || x);
       if (z.length) line += ', болит: ' + z.join(', ');
       if (e.notes) line += ', заметка: ' + e.notes;
+    } else if (e && e.napH) {
+      line += 'дневной сон ' + e.napH + ' ч, опросник не заполнен';
     } else line += 'опросник не заполнен';
     L.push(line);
     (d.w || []).forEach(w => {
@@ -1515,12 +1584,14 @@ const AI = {
 
 function aiSys() {
   const about = AI.about.get();
-  return 'Ты — ИИ-тренер в приложении APEX: трекере готовности и нагрузки спортсмена (хоккей, вратарская специализация). '
-    + 'Данные: утренний опросник — качество сна 1–5, энергия 1–5, настроение 1–5, болевые зоны, готовность к тренировке 1–5, часы сна, оценка сна с часов 0–100, средний пульс за ночь; '
+  return 'Ты — APEX, личный тренер хоккейного вратаря в приложении-трекере готовности и нагрузки. Ты общаешься со своим подопечным каждый день, помнишь контекст и ведёшь его через сезон. '
+    + 'Данные: утренний опросник — качество сна 1–5, энергия 1–5, настроение 1–5, болевые зоны, готовность к тренировке 1–5, часы ночного сна, часы дневного сна, оценка сна 0–100, средний пульс за ночь; '
     + 'тренировки — лёд/зал/кардио/восстановление/отдых, длительность, тяжесть RPE 1–10, качество работы 1–5, самочувствие после 1–5, упражнения (подходы×повторы×кг), пульс и зоны с Polar H10. '
-    + 'Правила: отвечай по-русски; коротко и по делу, без воды; используй только приведённые данные и не выдумывай числа; если данных мало — честно скажи; '
-    + 'не ставь медицинских диагнозов, при стойких болях советуй врача или спортивного доктора; тон живой и поддерживающий, на «ты»; эмодзи умеренно; '
-    + 'без markdown-разметки: короткие абзацы или списки строками с дефиса. '
+    + 'Как отвечать: по-русски, на «ты», живым и уверенным тоном опытного тренера — конкретно и по-человечески, без канцелярита. '
+    + 'Опирайся на конкретные цифры из данных и называй их прямо; давая совет, говори как именно его выполнить — сколько, когда, в чём выражается. '
+    + 'Разнообразь речь: не начинай ответы одинаково, избегай шаблонных фраз вроде «стоит отметить», «важно помнить», «продолжай в том же духе», не повторяй свои прошлые формулировки. '
+    + 'Обычно умещай ответ в 3–6 предложений; развёрнуто — только когда прямо просят разбор. Списки — строками с дефиса, без markdown-разметки. Эмодзи — изредка, к месту. '
+    + 'Не выдумывай числа: только приведённые данные; если их мало — честно скажи и спроси. Не ставь медицинских диагнозов; при стойких болях советуй врача или спортивного доктора. '
     + (about ? 'Контекст от спортсмена: ' + about : '');
 }
 
@@ -1535,11 +1606,13 @@ function aiDump(nDays, noHeader) {
   D.forEach(d => {
     const e = d.e;
     let line = d.k + ': ';
-    if (e) {
-      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
+    if (e && e.sleep != null) {
+      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.napH ? ', дневной сон ' + e.napH + ' ч' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
       const z = (e.zones || []).filter(x => x !== 'none').map(x => ZONES_LABEL[x] || x);
       if (z.length) line += ', болит: ' + z.join(', ');
       if (e.notes) line += ', заметка: ' + e.notes;
+    } else if (e && e.napH) {
+      line += 'дневной сон ' + e.napH + ' ч, опросник не заполнен';
     } else line += 'опросник не заполнен';
     L.push(line);
     (d.w || []).forEach(w => {
@@ -1579,7 +1652,7 @@ async function aiCall(messages, opts) {
       body: JSON.stringify({
         model: AI.model.get(),
         max_tokens: opts.maxTokens || 900,
-        temperature: opts.temperature != null ? opts.temperature : 0.6,
+        temperature: opts.temperature != null ? opts.temperature : 0.75,
         messages: messages
       })
     });
@@ -2062,7 +2135,7 @@ function localDay(ts) {
 // Подсказка по нагрузке: простые правила по опроснику и последним тренировкам
 function getReco() {
   const e = getTodayEntry();
-  if (!e) return null;
+  if (!e || e.sleep == null || e.energy == null || e.mood == null || e.ready == null) return null;
   const pct = Math.round((e.sleep + e.energy + e.mood + e.ready) / 4 / 5 * 100);
   const zones = (e.zones || []).filter(z => z !== 'none');
   const zl = zones.map(z => (ZONES_LABEL[z] || z).toLowerCase());
@@ -2439,7 +2512,7 @@ function buildDays() {
   return days;
 }
 
-const pctOf = e => Math.round((e.sleep + e.energy + e.mood + e.ready) / 4 / 5 * 100);
+const pctOf = e => (e.sleep == null || e.energy == null || e.mood == null || e.ready == null) ? null : Math.round((e.sleep + e.energy + e.mood + e.ready) / 4 / 5 * 100);
 const isTracked = d => !!(d.e || d.w);
 const hasTrain = d => (d.w || []).some(w => w.type !== 'rest');
 const loadOf = d => (d.w || []).reduce((s, w) => s + (w.type === 'rest' ? 0 : (w.dur || 0) * (w.rpe || 0)), 0);
@@ -2449,7 +2522,7 @@ const levelColor = p => p >= 70 ? 'var(--accent)' : p >= 40 ? 'var(--warn)' : 'v
 // Метрики дня i (D — массив дней). null — данных нет.
 const MET = {
   sleep:   (D, i) => D[i].e ? D[i].e.sleep : null,
-  sleepH:  (D, i) => (D[i].e && D[i].e.sleepH > 0) ? D[i].e.sleepH : null,
+  sleepH:  (D, i) => (D[i].e && (D[i].e.sleepH > 0 || D[i].e.napH > 0)) ? ((D[i].e.sleepH || 0) + (D[i].e.napH || 0)) : null,
   sleepS:  (D, i) => (D[i].e && D[i].e.sleepScore > 0) ? D[i].e.sleepScore : null,
   sleepHR: (D, i) => (D[i].e && D[i].e.sleepHR > 0) ? D[i].e.sleepHR : null,
   energy:  (D, i) => D[i].e ? D[i].e.energy : null,
