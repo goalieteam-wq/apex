@@ -111,6 +111,61 @@ body {
 .nav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
 .nav-btn span { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; }
 
+/* ── переключатель «Записать | История» внутри Тренировки ── */
+.seg {
+  display: flex;
+  gap: 4px;
+  background: var(--s2);
+  border: 1px solid var(--s3);
+  border-radius: 12px;
+  padding: 4px;
+  margin: 0 0 12px;
+}
+.seg-btn {
+  flex: 1;
+  padding: 9px 0;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--fg2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+.seg-btn.active { background: var(--accent); color: #0f0f12; }
+
+/* ── память ИИ в Профиле ── */
+.mem-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.mem-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--s2);
+  border: 1px solid var(--s3);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg);
+}
+.mem-item span { flex: 1; word-break: break-word; }
+.mem-del {
+  background: none;
+  border: none;
+  color: var(--fg3);
+  font-size: 14px;
+  line-height: 1.3;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.mem-del:active { color: var(--bad); }
+
 /* ── screen header ── */
 .screen-hdr {
   padding-top: 8px;
@@ -846,7 +901,7 @@ body {
     </div>
   </div>
 
-  <!-- ── WORKOUT ── -->
+  <!-- ── WORKOUT (Записать | История) ── -->
   <div class="screen" id="s-plan">
     <div class="screen-hdr">
       <div class="home-greeting">Сегодня</div>
@@ -854,6 +909,12 @@ body {
       <div class="sub" id="plan-date-sub"></div>
     </div>
 
+    <div class="seg" id="plan-seg">
+      <button class="seg-btn active" id="seg-rec" onclick="planMode('rec')">✍️ Записать</button>
+      <button class="seg-btn" id="seg-hist" onclick="planMode('hist')">🕒 История</button>
+    </div>
+
+    <div id="plan-rec">
     <div id="wk-reco"></div>
     <div id="wk-polar"></div>
     <button class="wk-link" id="wk-manual" onclick="showWkForm(true)">Тренировка без пульсометра</button>
@@ -930,6 +991,11 @@ body {
     <div id="wk-today"></div>
     <div id="ai-wk-note"></div>
     <div id="wk-recent"></div>
+    </div><!-- /plan-rec -->
+
+    <div id="plan-hist" style="display:none">
+      <div id="history-list"></div>
+    </div>
   </div>
 
   <!-- ── ANALYTICS ── -->
@@ -942,15 +1008,6 @@ body {
     <div id="ai-weekly"></div>
     <div id="stats-body"></div>
     <div id="ex-progress"></div>
-  </div>
-
-  <!-- ── HISTORY ── -->
-  <div class="screen" id="s-history">
-    <div class="screen-hdr">
-      <div class="home-greeting">Журнал</div>
-      <div class="home-name">ИСТОРИЯ</div>
-    </div>
-    <div id="history-list"></div>
   </div>
 
   <!-- ── AI ── -->
@@ -989,10 +1046,6 @@ body {
     <button class="nav-btn" id="nav-ai" onclick="goTab('ai')">
       <svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.6 0-3.1-.4-4.3-1.2L3 20l1.3-4.1A8.5 8.5 0 1121 11.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8.8" cy="11.5" r="1.2" fill="currentColor"/><circle cx="12.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="16.2" cy="11.5" r="1.2" fill="currentColor"/></svg>
       <span>ИИ</span>
-    </button>
-    <button class="nav-btn" id="nav-history" onclick="goTab('history')">
-      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>История</span>
     </button>
     <button class="nav-btn" id="nav-settings" onclick="goTab('settings')">
       <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -1091,6 +1144,22 @@ function getPolar() {
   try { return JSON.parse(localStorage.getItem('gt_polar') || '[]'); } catch { return []; }
 }
 
+// ── Память ИИ: облако (один документ users/dmitri/memory/state) ──
+async function fbSaveMemory(m) {
+  if (!db || !navigator.onLine) return false;
+  try {
+    await db.collection('users').doc(USER_ID).collection('memory').doc('state').set({ items: m.items, mt: Date.now() });
+    return true;
+  } catch(e) { console.warn('Firestore memory write error:', e); return false; }
+}
+async function fbLoadMemory() {
+  if (!db || !navigator.onLine) return null;
+  try {
+    const snap = await db.collection('users').doc(USER_ID).collection('memory').doc('state').get();
+    return snap.exists ? snap.data() : null;
+  } catch(e) { console.warn('Firestore memory read error:', e); return null; }
+}
+
 // ── State ──────────────────────────────────────────
 const S = {
   tab: 'home',
@@ -1161,10 +1230,31 @@ async function syncFromCloud() {
   }
   const cloudP = await fbLoadPolar();
   if (cloudP) { try { localStorage.setItem('gt_polar', JSON.stringify(cloudP)); } catch {} }
+  // Память ИИ: слияние облака с локальной (без дублей)
+  const cloudM = await fbLoadMemory();
+  if (cloudM && Array.isArray(cloudM.items) && cloudM.items.length) {
+    const m = memStore();
+    const seen = new Set(m.items.map(x => memNorm(x.txt)));
+    let changed = false;
+    cloudM.items.forEach(x => {
+      if (!x || !x.txt) return;
+      const n = memNorm(x.txt);
+      if (n && !seen.has(n)) { m.items.push({ t: x.t || Date.now(), txt: x.txt }); seen.add(n); changed = true; }
+    });
+    if (changed) {
+      m.items.sort((a, b) => (a.t || 0) - (b.t || 0));
+      while (m.items.length > 40) m.items.shift();
+      memSave(m);
+      fbSaveMemory(m);
+    }
+  }
   // Re-render after cloud sync
   renderHome();
-  if (S.tab === 'history') renderHistory();
-  if (S.tab === 'plan') renderPlan();
+  if (S.tab === 'plan') {
+    renderPlan();
+    const ph = document.getElementById('plan-hist');
+    if (ph && ph.style.display !== 'none') renderHistory();
+  }
   if (S.tab === 'stats') renderStats();
   if (S.tab === 'check') renderCheck();
 }
@@ -1183,8 +1273,21 @@ function goTab(tab) {
   if (tab === 'check') renderCheck();
   if (tab === 'plan') renderPlan();
   if (tab === 'stats') renderStats();
-  if (tab === 'history') renderHistory();
   if (tab === 'ai') renderAI();
+}
+
+// Переключатель «Записать | История» внутри Тренировки
+function planMode(m) {
+  const rec = document.getElementById('plan-rec'), hist = document.getElementById('plan-hist');
+  if (!rec || !hist) return;
+  const on = m === 'hist';
+  rec.style.display = on ? 'none' : '';
+  hist.style.display = on ? '' : 'none';
+  const bR = document.getElementById('seg-rec'), bH = document.getElementById('seg-hist');
+  if (bR) bR.classList.toggle('active', !on);
+  if (bH) bH.classList.toggle('active', on);
+  if (on) renderHistory();
+  window.scrollTo(0, 0);
 }
 
 // ── Greeting ───────────────────────────────────────
@@ -1253,6 +1356,16 @@ function renderSettings() {
       <button class="btn-home" style="margin:0 0 10px" onclick="aiSaveAbout()">💾 Сохранить описание</button>
       <button class="btn-home" style="margin:0" onclick="aiTest()">🔌 Проверить связь</button>
     </div>
+    <div class="card"><div class="card-label">🧠 Память ИИ</div>
+      <div class="st-sub">ИИ сам запоминает важное из переписки — травмы, цели, договорённости, расписание. Это он учитывает в каждом ответе: в чате, брифинге и разборах. Хранится в облаке.</div>
+      ${(() => {
+        const mem = memStore();
+        if (!mem.items.length) return '<div class="st-sub" style="margin-top:8px;opacity:.75">Пока пусто. Поговори с ИИ о важном — он сам это запомнит и больше не будет переспрашивать.</div>';
+        return '<div class="mem-list">' + mem.items.slice().reverse().map((x, i) => `<div class="mem-item"><span>${esc(x.txt)}</span><button class="mem-del" onclick="memDel(${mem.items.length - 1 - i})" title="Забыть">✕</button></div>`).join('') + '</div>'
+          + `<div class="st-sub" style="margin-top:8px">Записей: ${mem.items.length}. ИИ дописывает сам после разговоров в чате.</div>`
+          + '<button class="btn-home" style="margin:10px 0 0" onclick="memClearAll()">🧹 Очистить всю память</button>';
+      })()}
+    </div>
     <div class="card"><div class="card-label">📦 Данные и облако</div>
       <div class="st-sub" id="cloud-status">${esc(CLOUD.lastStatus || 'Проверка не запускалась — нажми кнопку ниже')}</div>
       <button class="btn-home" style="margin:0 0 8px" onclick="cloudCheck()">🔄 Проверить облако</button>
@@ -1263,7 +1376,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 29.10.2026</span></div>
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 29.10.2026 · 2</span></div>
       <div class="st-sub" style="margin-bottom:0">Утреннее напоминание: на iPhone «Команды» → «Автоматизация» → «Время суток» → «Открыть приложение».</div></div>`;
 }
 function streakDays() {
@@ -1373,7 +1486,7 @@ function renderHome() {
     const col = pc === null ? '' : `background:${pc >= 70 ? 'var(--accent)' : pc >= 40 ? 'var(--warn)' : 'var(--bad)'}`;
     const tr = d && (d.w || []).filter(w => w.type !== 'rest');
     const ico = tr && tr.length ? (WK_TYPES[tr[0].type] || WK_TYPES.other).e : (d && (d.w || []).length ? '😴' : '');
-    strip.push(`<div class="wsd${k === todayK ? ' today' : ''}${future ? ' future' : ''}" onclick="goTab('history')"><div class="dl">${WD[i]}</div><div class="dot" style="${col}">${pc === null ? '' : pc}</div><div class="wi">${ico}</div></div>`);
+    strip.push(`<div class="wsd${k === todayK ? ' today' : ''}${future ? ' future' : ''}" onclick="goTab('plan');planMode('hist')"><div class="dl">${WD[i]}</div><div class="dot" style="${col}">${pc === null ? '' : pc}</div><div class="wi">${ico}</div></div>`);
   }
   html += `<div class="card"><div class="card-label">Эта неделя</div><div class="wkstrip">${strip.join('')}</div></div>`;
 
@@ -1494,7 +1607,7 @@ async function aiFactFetch(force) {
     + 'Требования: конкретика — число, срок, механизм или упоминание исследования; 1–2 предложения; по-русски; никакого воды и банальностей («пейте воду», «меньше сидите в телефоне» — такое не присылать); без приветствий и вступлений — сразу сам факт.'
     + (prev ? '\n\nУже были раньше (не повторяй их и не перефразируй):\n' + prev : '');
   try {
-    const txt = await aiCall([{ role: 'system', content: aiSys() }, { role: 'user', content: prompt }], { maxTokens: 180, temperature: 1.0 });
+    const txt = await aiCall([{ role: 'system', content: aiSys(true) }, { role: 'user', content: prompt }], { maxTokens: 180, temperature: 1.0 });
     const t = (txt || '').trim().replace(/^[\s"«»]+|[\s"«»\.]+$/g, '');
     if (t) {
       const s2 = aiFactStore();
@@ -1582,7 +1695,25 @@ const AI = {
   }
 };
 
-function aiSys() {
+// ── Память ИИ: блокнот важных фактов ────────────────
+// ИИ сам дописывает важное из переписки; блок подкладывается в каждый запрос.
+const MEM_MAX = 40;
+function memStore() {
+  try {
+    const m = JSON.parse(localStorage.getItem('gt_mem') || '{}');
+    return { items: Array.isArray(m.items) ? m.items.filter(x => x && x.txt) : [] };
+  } catch { return { items: [] }; }
+}
+function memSave(m) { try { localStorage.setItem('gt_mem', JSON.stringify(m)); } catch {} }
+function memNorm(s) { return String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9 ]/g, '').trim(); }
+function memBlock() {
+  const m = memStore();
+  if (!m.items.length) return '';
+  return '\n\nПамять о спортсмене — важное из прошлых разговоров (учитывай автоматически: не переспрашивай, не «вспоминай заново» и не решай повторно то, что уже обсудили):\n'
+    + m.items.map(x => '· ' + x.txt).join('\n');
+}
+
+function aiSys(noMem) {
   const about = AI.about.get();
   return 'Ты — APEX, личный тренер хоккейного вратаря в приложении-трекере готовности и нагрузки. Ты общаешься со своим подопечным каждый день, помнишь контекст и ведёшь его через сезон. '
     + 'Данные: утренний опросник — качество сна 1–5, энергия 1–5, настроение 1–5, болевые зоны, готовность к тренировке 1–5, часы ночного сна, часы дневного сна, оценка сна 0–100, средний пульс за ночь; '
@@ -1592,7 +1723,8 @@ function aiSys() {
     + 'Разнообразь речь: не начинай ответы одинаково, избегай шаблонных фраз вроде «стоит отметить», «важно помнить», «продолжай в том же духе», не повторяй свои прошлые формулировки. '
     + 'Обычно умещай ответ в 3–6 предложений; развёрнуто — только когда прямо просят разбор. Списки — строками с дефиса, без markdown-разметки. Эмодзи — изредка, к месту. '
     + 'Не выдумывай числа: только приведённые данные; если их мало — честно скажи и спроси. Не ставь медицинских диагнозов; при стойких болях советуй врача или спортивного доктора. '
-    + (about ? 'Контекст от спортсмена: ' + about : '');
+    + (about ? 'Контекст от спортсмена: ' + about : '')
+    + (noMem ? '' : memBlock());
 }
 
 // Компактный дамп данных за nDays дней (сегодня — последняя строка)
@@ -1832,6 +1964,7 @@ async function aiSend() {
     const txt = await aiCall(messages, { maxTokens: 900 });
     h.push({ role: 'assistant', txt });
     aiChatSave(h);
+    aiMemExtract(q, txt);
     if (think) think.remove();
     if (list) list.insertAdjacentHTML('beforeend', `<div class="ai-msg"><div class="av">🤖</div><div><div class="bub">${esc(txt)}</div></div></div>`);
   } catch (err) {
@@ -1844,6 +1977,66 @@ async function aiSend() {
   _aiBusy = false;
   if (send) send.disabled = false;
   window.scrollTo(0, document.body.scrollHeight);
+}
+
+// ── Память ИИ: извлечение важных фактов из переписки (тихо, после ответа) ──
+let _memBusy = false;
+async function aiMemExtract(q, a) {
+  if (!AI.key.get() || _memBusy) return;
+  const m0 = memStore();
+  const known = m0.items.length
+    ? 'Уже в памяти (не дублируй и не перефразируй):\n' + m0.items.map(x => '· ' + x.txt).join('\n') + '\n\n'
+    : '';
+  _memBusy = true;
+  try {
+    const prompt = 'Диалог в приложении APEX. Я — хоккейный вратарь, собеседник — мой ИИ-тренер.\n'
+      + 'Я написал: «' + String(q).slice(0, 600) + '»\n'
+      + 'Тренер ответил: «' + String(a).slice(0, 900) + '»\n\n'
+      + known
+      + 'Задача: выпиши из моего сообщения новые ВАЖНЫЕ факты обо мне на весь сезон — которых ещё нет в памяти. Что считать важным: травмы, боли, лечение; цели и договорённости с тренером; расписание, смены, лагеря, поездки; инвентарь; особенности режима, сна и восстановления; постоянные обстоятельства (кто я, как и где тренируюсь).\n'
+      + 'Правила: максимум 2 факта; каждый — одна короткая фраза до 12 слов, от третьего лица («Спина болит вторую неделю», «Договорились: в день матча — только растяжка»); вопросы про цифры из приложения и просьбы составить план — НЕ память.\n'
+      + 'Если ничего нового важного нет — ответь ровно одним словом: NONE. Без нумерации и пояснений, каждый факт с новой строки.';
+    const txt = await aiCall([
+      { role: 'system', content: 'Ты извлекаешь факты для записной книжки тренера. Отвечай только списком фактов или словом NONE — без вступлений и пояснений.' },
+      { role: 'user', content: prompt }
+    ], { maxTokens: 120, temperature: 0.2 });
+    const lines = (txt || '').split('\n')
+      .map(s => s.replace(/^[\s\-·•*>\d.)]+/, '').trim())
+      .filter(s => s.length > 3 && !/^NONE$/i.test(s))
+      .slice(0, 2);
+    if (!lines.length) return;
+    const m2 = memStore();
+    let added = 0;
+    lines.forEach(t => {
+      if (t.length > 160) t = t.slice(0, 157) + '…';
+      if (m2.items.some(x => memNorm(x.txt) === memNorm(t))) return;
+      m2.items.push({ t: Date.now(), txt: t });
+      added++;
+    });
+    if (!added) return;
+    while (m2.items.length > MEM_MAX) m2.items.shift();
+    memSave(m2);
+    fbSaveMemory(m2);
+    if (S.tab === 'settings') renderSettings();
+  } catch (e) { /* память не критична — молча пропускаем */ }
+  _memBusy = false;
+}
+
+// ── Память ИИ: управление в Профиле ──
+function memDel(i) {
+  const m = memStore();
+  m.items.splice(i, 1);
+  memSave(m);
+  fbSaveMemory(m);
+  renderSettings();
+  showToast('ИИ забыл эту запись');
+}
+function memClearAll() {
+  if (!confirm('Стереть всю память ИИ? Он забудет всё, что запомнил из разговоров.')) return;
+  memSave({ items: [] });
+  fbSaveMemory({ items: [] });
+  renderSettings();
+  showToast('Память ИИ очищена');
 }
 
 // ── Фича 4: комментарий ИИ к тренировке ──
