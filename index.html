@@ -1,0 +1,3027 @@
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APEX</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="APEX">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f0f12">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-auth-compat.min.js"></script>
+
+<style>
+/* ── tokens ── */
+:root {
+  color-scheme: dark;
+  --bg:       #0f0f12;
+  --s1:       #18181f;
+  --s2:       #222230;
+  --s3:       #2a2a3a;
+  --fg:       #e8e8f0;
+  --fg2:      #9090b0;
+  --fg3:      #5a5a7a;
+  --accent:   #3dff8c;
+  --accent2:  #1adf65;
+  --warn:     #ff8c3d;
+  --bad:      #ff4d6a;
+  --ice:      #5bc8f5;
+  --gym:      #ff8c3d;
+  --video:    #b47cf5;
+  --rec:      #3dff8c;
+  --nav-h:    60px;
+  --r:        14px;
+  --r-sm:     10px;
+}
+
+/* ── reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+
+/* ── app shell ── */
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* ── screens ── */
+.screen {
+  display: none;
+  min-height: 100dvh;
+  padding: max(56px, calc(env(safe-area-inset-top, 0px) + 16px)) max(16px, env(safe-area-inset-right, 0px)) calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px));
+}
+.screen.active { display: block; }
+
+/* ── bottom nav ── */
+#nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--s1);
+  border-top: 1px solid var(--s3);
+  display: flex;
+  z-index: 200;
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--fg3);
+  padding: 8px 0 6px;
+  transition: color 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+.nav-btn span { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; }
+
+/* ── screen header ── */
+.screen-hdr {
+  padding-top: 8px;
+  margin-bottom: 20px;
+}
+.screen-hdr h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  line-height: 1.1;
+}
+.screen-hdr .sub { font-size: 13px; color: var(--fg3); margin-top: 2px; }
+
+/* ── cards ── */
+.card {
+  background: var(--s1);
+  border-radius: var(--r);
+  padding: 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--s3);
+}
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-bottom: 12px;
+}
+
+/* ── HOME ── */
+.home-greeting { margin-bottom: 4px; font-size: 16px; color: var(--fg3); }
+.home-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.home-date { font-size: 15px; color: var(--fg2); margin-bottom: 28px; }
+
+/* readiness big card */
+.ready-card {
+  background: var(--s1);
+  border-radius: var(--r);
+  padding: 24px;
+  margin-bottom: 16px;
+  border: 1px solid var(--s3);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.ready-ring-wrap { flex-shrink: 0; position: relative; width: 120px; height: 120px; }
+.ready-ring-wrap svg { width: 120px; height: 120px; }
+.ring-bg { fill: none; stroke: var(--s3); stroke-width: 8; }
+.ring-fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+  transform-origin: center; transform: rotate(-90deg);
+  transition: stroke-dashoffset 0.8s cubic-bezier(.4,0,.2,1); }
+.ring-pct {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.ring-pct-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--accent);
+}
+.ring-pct-sign { font-size: 14px; color: var(--fg3); margin-top: 2px; }
+.ready-info { flex: 1; min-width: 0; }
+.ready-info-title { font-size: 14px; font-weight: 600; color: var(--fg2); margin-bottom: 14px; }
+.mini-bar-row { display: flex; flex-direction: column; gap: 10px; }
+.mini-bar { display: flex; align-items: center; gap: 10px; }
+.mini-bar-label { font-size: 13px; color: var(--fg3); width: 80px; flex-shrink: 0; }
+.mini-bar-track { flex: 1; height: 6px; background: var(--s3); border-radius: 3px; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.6s; }
+.mini-bar-val { font-size: 13px; color: var(--fg2); width: 24px; text-align: right; flex-shrink: 0; }
+
+/* empty state */
+.empty-card {
+  background: var(--s1);
+  border-radius: var(--r);
+  padding: 40px 24px;
+  margin-bottom: 16px;
+  border: 1px solid var(--s3);
+  text-align: center;
+}
+.empty-card .ec-icon { font-size: 44px; margin-bottom: 12px; }
+.empty-card .ec-title { font-size: 18px; font-weight: 600; color: var(--fg); margin-bottom: 6px; }
+.empty-card .ec-sub { font-size: 14px; color: var(--fg3); margin-bottom: 20px; }
+.btn-go {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--accent); color: #0f0f12;
+  font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+  border: none; border-radius: var(--r-sm);
+  padding: 14px 28px; cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+  transition: opacity 0.15s;
+}
+.btn-go:active { opacity: 0.8; }
+
+/* plan preview */
+.plan-preview-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--s3);
+}
+.plan-preview-item:last-child { border-bottom: none; padding-bottom: 0; }
+.plan-preview-item:first-child { padding-top: 0; }
+.ppi-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ppi-time { font-size: 14px; color: var(--fg3); width: 46px; flex-shrink: 0; }
+.ppi-title { font-size: 15px; font-weight: 500; color: var(--fg); flex: 1; }
+.ppi-done { font-size: 15px; }
+
+.card-link-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.card-link {
+  font-size: 12px; color: var(--accent); font-weight: 600;
+  background: none; border: none; cursor: pointer; padding: 0;
+  -webkit-user-select: none; user-select: none;
+}
+
+/* ── QUESTIONNAIRE ── */
+.q-prog-dots {
+  display: flex; align-items: center; gap: 6px;
+  justify-content: center;
+  margin-bottom: 28px;
+  padding-top: 4px;
+}
+.q-dot {
+  width: 6px; height: 6px; border-radius: 3px;
+  background: var(--s3); transition: all 0.25s;
+}
+.q-dot.active { background: var(--accent); width: 18px; }
+.q-dot.done { background: var(--accent); opacity: 0.5; }
+
+.q-step { display: none; }
+.q-step.active { display: block; }
+
+.q-label {
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg3); margin-bottom: 6px;
+}
+.q-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px; letter-spacing: 0.04em;
+  color: var(--fg); margin-bottom: 6px; line-height: 1.1;
+}
+.q-hint { font-size: 13px; color: var(--fg3); margin-bottom: 24px; }
+
+/* scale buttons */
+.scale-row {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.scale-btn {
+  flex: 1; aspect-ratio: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  background: var(--s2); border: 2px solid var(--s3);
+  border-radius: var(--r-sm); cursor: pointer;
+  color: var(--fg2); font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px; letter-spacing: 0.04em;
+  transition: all 0.15s; -webkit-user-select: none; user-select: none;
+}
+.scale-btn .slabel { font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 500; color: var(--fg3); }
+.scale-btn.selected { border-color: var(--accent); background: #3dff8c1a; color: var(--accent); }
+.scale-btn.selected .slabel { color: var(--accent); }
+.scale-btn:active { transform: scale(0.95); }
+
+/* emoji buttons */
+.emoji-row {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.emoji-btn {
+  flex: 1; padding: 14px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--s2); border: 2px solid var(--s3);
+  border-radius: var(--r-sm); cursor: pointer;
+  font-size: 24px; transition: all 0.15s;
+  -webkit-user-select: none; user-select: none;
+}
+.emoji-btn .elabel { font-size: 9px; font-weight: 500; color: var(--fg3); font-family: 'Inter', sans-serif; }
+.emoji-btn.selected { border-color: var(--accent); background: #3dff8c1a; }
+.emoji-btn.selected .elabel { color: var(--accent); }
+.emoji-btn:active { transform: scale(0.95); }
+
+/* zone grid */
+.zone-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+.zone-btn {
+  padding: 14px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--s2); border: 2px solid var(--s3);
+  border-radius: var(--r-sm); cursor: pointer;
+  font-size: 20px; transition: all 0.15s;
+  -webkit-user-select: none; user-select: none;
+}
+.zone-btn .zlabel { font-size: 11px; font-weight: 500; color: var(--fg3); }
+.zone-btn.selected { border-color: var(--warn); background: #ff8c3d18; }
+.zone-btn.selected .zlabel { color: var(--warn); }
+.zone-btn.ok.selected { border-color: var(--accent); background: #3dff8c18; }
+.zone-btn.ok.selected .zlabel { color: var(--accent); }
+.zone-btn:active { transform: scale(0.97); }
+
+/* notes */
+.notes-ta {
+  width: 100%; min-height: 90px;
+  background: var(--s2); border: 1px solid var(--s3);
+  border-radius: var(--r-sm); color: var(--fg);
+  font-family: 'Inter', sans-serif; font-size: 14px;
+  padding: 12px; resize: none; outline: none;
+  transition: border-color 0.15s; margin-bottom: 12px;
+}
+.notes-ta:focus { border-color: var(--accent); }
+.notes-ta::placeholder { color: var(--fg3); }
+
+/* nav buttons (back/next) */
+.q-nav { display: flex; gap: 10px; margin-top: 4px; }
+.btn-back {
+  background: var(--s2); border: 1px solid var(--s3);
+  color: var(--fg2); font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  padding: 14px 20px; border-radius: var(--r-sm);
+  cursor: pointer; -webkit-user-select: none; user-select: none;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.btn-next {
+  flex: 1; background: var(--accent); color: #0f0f12;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+  border: none; border-radius: var(--r-sm); padding: 14px;
+  cursor: pointer; -webkit-user-select: none; user-select: none;
+  transition: opacity 0.15s;
+}
+.btn-next:disabled { opacity: 0.3; }
+.btn-next:not(:disabled):active { opacity: 0.85; }
+.btn-back:active { opacity: 0.7; }
+
+/* result screen */
+.result-ring-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
+.result-ring-wrap svg { width: 140px; height: 140px; }
+.result-pct-big {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.result-pct-big .num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px; line-height: 1; color: var(--accent);
+}
+.result-pct-big .lbl { font-size: 12px; color: var(--fg3); }
+
+.result-tiles {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 16px;
+}
+.result-tile {
+  background: var(--s2); border-radius: var(--r-sm);
+  padding: 14px; border: 1px solid var(--s3);
+}
+.rt-label { font-size: 11px; color: var(--fg3); margin-bottom: 8px; }
+.rt-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px; color: var(--fg); line-height: 1; margin-bottom: 6px;
+}
+.rt-bar-track { height: 4px; background: var(--s3); border-radius: 2px; overflow: hidden; }
+.rt-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+.zones-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.zone-chip {
+  background: #ff8c3d18; border: 1px solid #ff8c3d40;
+  color: var(--warn); font-size: 12px; font-weight: 500;
+  padding: 4px 10px; border-radius: 20px;
+}
+.zone-chip.ok { background: #3dff8c18; border-color: #3dff8c40; color: var(--accent); }
+
+.result-note {
+  background: var(--s2); border-radius: var(--r-sm);
+  padding: 12px 14px; margin-bottom: 16px;
+  font-size: 13px; color: var(--fg2); font-style: italic;
+  border: 1px solid var(--s3);
+}
+
+.btn-home {
+  width: 100%; background: var(--s2);
+  border: 1px solid var(--s3); color: var(--fg2);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  padding: 14px; border-radius: var(--r-sm);
+  cursor: pointer; -webkit-user-select: none; user-select: none;
+  transition: all 0.15s; text-align: center; margin-top: 4px;
+}
+.btn-home:active { opacity: 0.7; }
+
+/* ── WORKOUTS ── */
+.btn-go:disabled { opacity: 0.3; }
+#s-plan .home-name { font-size: 42px; }
+.wk-opt { font-size: 10px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg3); margin-left: 6px; }
+.rpe-row.five { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.rpe-row.five .rpe-btn { aspect-ratio: auto; height: 46px; }
+
+/* ── ANALYTICS ── */
+.st-note { font-size: 13px; color: var(--fg3); margin-bottom: 16px; }
+.st-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.st-kpi { background: var(--s2); border-radius: var(--r-sm); padding: 12px; }
+.st-kpi .v { font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; color: var(--fg); }
+.st-kpi .l { font-size: 11px; color: var(--fg3); margin-top: 4px; }
+.st-status { font-size: 14px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--s2); border-left: 4px solid var(--s3); margin-bottom: 14px; color: var(--fg2); }
+.st-status.ok   { border-left-color: var(--accent); }
+.st-status.mid  { border-left-color: var(--warn); }
+.st-status.high { border-left-color: var(--bad); }
+.st-sub { font-size: 12px; color: var(--fg3); margin: 12px 0 6px; }
+.st-ins { font-size: 14px; color: var(--fg); padding: 10px 0; border-bottom: 1px solid var(--s3); }
+.st-ins:last-child { border-bottom: none; }
+.cor-row { padding: 10px 0; border-bottom: 1px solid var(--s3); }
+.cor-row:last-child { border-bottom: none; }
+.cor-row.dim { opacity: 0.5; }
+.cor-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--fg); }
+.cor-n { font-size: 12px; color: var(--fg3); white-space: nowrap; }
+.cor-bar { position: relative; height: 6px; background: var(--s3); border-radius: 3px; margin: 10px 0 6px; }
+.cor-bar i { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+.cor-bar b { position: absolute; left: 50%; top: -3px; width: 1px; height: 12px; background: var(--fg3); }
+.cor-txt { font-size: 12px; color: var(--fg2); }
+.grp { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; }
+.grp .nm { width: 118px; color: var(--fg2); flex-shrink: 0; }
+.grp .bar { flex: 1; height: 8px; background: var(--s3); border-radius: 4px; overflow: hidden; }
+.grp .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.grp .val { width: 78px; text-align: right; color: var(--fg); flex-shrink: 0; }
+.grp .val small { color: var(--fg3); }
+.st-btn { width: 100%; margin-top: 4px; }
+.wk-reco {
+  border-radius: var(--r); padding: 16px 18px; margin-bottom: 16px;
+  border: 1px solid var(--s3); border-left-width: 4px; background: var(--s1);
+}
+.wk-reco.wk-green  { border-left-color: var(--accent); background: #3dff8c14; }
+.wk-reco.wk-yellow { border-left-color: var(--warn);   background: #ff8c3d14; }
+.wk-reco.wk-red    { border-left-color: var(--bad);    background: #ff4d6a14; }
+.wk-reco-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 28px;
+  letter-spacing: 0.04em; line-height: 1.1; margin-bottom: 4px; color: var(--fg);
+}
+.wk-green .wk-reco-title  { color: var(--accent); }
+.wk-yellow .wk-reco-title { color: var(--warn); }
+.wk-red .wk-reco-title    { color: var(--bad); }
+.wk-reco-text { font-size: 14px; color: var(--fg2); }
+.wk-reco .btn-go { margin-top: 12px; }
+
+.wk-types .zone-btn.selected { border-color: var(--accent); background: #3dff8c18; }
+.wk-types .zone-btn.selected .zlabel { color: var(--accent); }
+.wk-sec {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg3); margin: 18px 0 8px;
+}
+.wk-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.wk-chip {
+  padding: 10px 14px; background: var(--s2); border: 2px solid var(--s3);
+  border-radius: var(--r-sm); color: var(--fg2);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-user-select: none; user-select: none;
+}
+.wk-chip.selected { border-color: var(--accent); color: var(--accent); background: #3dff8c1a; }
+.wk-input {
+  width: 100%; background: var(--s2); border: 1px solid var(--s3);
+  border-radius: var(--r-sm); color: var(--fg); outline: none;
+  font-family: 'Inter', sans-serif; font-size: 16px; padding: 12px;
+}
+.wk-input:focus { border-color: var(--accent); }
+.rpe-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.rpe-btn {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--s2); border: 2px solid var(--s3); border-radius: 8px;
+  color: var(--fg2); font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+  cursor: pointer; padding: 0; -webkit-user-select: none; user-select: none;
+}
+.rpe-btn.selected { border-color: var(--accent); background: #3dff8c1a; color: var(--accent); }
+.rpe-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg3); margin-top: 6px; }
+
+.wk-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--s1); border: 1px solid var(--s3); border-radius: var(--r);
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.wk-item.compact { background: none; border: none; border-radius: 0; padding: 8px 0; margin: 0; }
+.wk-emoji { font-size: 24px; line-height: 1.2; }
+.wk-body { flex: 1; min-width: 0; }
+.wk-title { font-size: 15px; font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; gap: 8px; }
+.wk-when { font-size: 12px; color: var(--fg3); font-weight: 500; white-space: nowrap; }
+.wk-meta { font-size: 13px; color: var(--fg2); margin-top: 2px; }
+.wk-note { font-size: 13px; color: var(--fg3); font-style: italic; margin-top: 6px; overflow-wrap: anywhere; }
+.wk-del { background: none; border: none; color: var(--fg3); font-size: 14px; padding: 4px 6px; cursor: pointer; }
+.ex-row { background: var(--bg2, rgba(255,255,255,.04)); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+.ex-row input { width: 100%; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--fg3); border-radius: 8px; padding: 9px 10px; font-size: 15px; }
+.ex-nums { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+.ex-nums label { font-size: 11px; color: var(--fg3); display: block; margin-bottom: 3px; }
+.ex-top { display: flex; gap: 8px; }
+.ex-x { background: none; border: none; color: var(--fg3); font-size: 18px; padding: 0 8px; cursor: pointer; }
+.wk-ex-line { font-size: 12.5px; color: var(--fg2, var(--fg3)); margin-top: 2px; }
+[hidden] { display: none !important; }
+.hm-hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.hm-brand { font-size: 11px; font-weight: 700; letter-spacing: .28em; color: var(--accent); margin-bottom: 10px; }
+.hm-name { font-family: 'Bebas Neue', sans-serif; font-size: 40px; letter-spacing: .05em; line-height: 1; color: var(--fg); }
+.hm-date { font-size: 14px; color: var(--fg2); margin-top: 4px; }
+.hm-streak { text-align: center; background: var(--s1); border: 1px solid var(--s3); border-radius: 14px; padding: 8px 12px; min-width: 64px; }
+.hm-streak b { display: block; font-size: 20px; color: var(--warn); }
+.hm-streak span { font-size: 10px; color: var(--fg3); }
+.lvl-green { --lc: 61,255,140; } .lvl-yellow { --lc: 255,140,61; } .lvl-red { --lc: 255,77,106; }
+.hero { border-radius: 20px; padding: 18px; margin-bottom: 12px; border: 1px solid rgba(var(--lc),.38);
+  background: linear-gradient(160deg, rgba(var(--lc),.18), rgba(var(--lc),.03) 62%), var(--s1); }
+.hero-top { display: flex; align-items: center; gap: 16px; }
+.hero-ring { position: relative; width: 104px; height: 104px; flex-shrink: 0; }
+.hero-ring svg { width: 104px; height: 104px; }
+.hero-ring .rg-bg { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 9; }
+.hero-ring .rg-fg { fill: none; stroke: rgb(var(--lc)); stroke-width: 9; stroke-linecap: round; transform-origin: center; transform: rotate(-90deg); filter: drop-shadow(0 0 6px rgba(var(--lc),.55)); }
+.hero-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: rgb(var(--lc)); }
+.hero-pct small { font-size: 16px; margin: 6px 0 0 1px; }
+.hero-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: .04em; color: rgb(var(--lc)); line-height: 1; }
+.hero-sub { font-size: 14px; color: var(--fg); margin-top: 6px; line-height: 1.35; }
+.hero-pain { font-size: 12px; color: var(--fg2); margin-top: 6px; }
+.hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+.hs { background: rgba(0,0,0,.22); border-radius: 12px; padding: 9px 4px; text-align: center; }
+.hs .e { font-size: 16px; } .hs .v { font-size: 15px; font-weight: 700; margin-top: 2px; } .hs .l { font-size: 10px; color: var(--fg3); }
+.hs .bar { height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; margin: 6px 8px 0; overflow: hidden; }
+.hs .bar i { display: block; height: 100%; background: rgb(var(--lc)); }
+.hero-cta { text-align: center; padding: 8px 0 4px; }
+.hero-cta .t { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: .04em; }
+.hero-cta .s { font-size: 14px; color: var(--fg2); margin: 4px 0 14px; }
+.hm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.hm-act { background: var(--s1); border: 1px solid var(--s3); color: var(--fg); border-radius: 14px; padding: 14px 8px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.hm-act.main { background: var(--accent); color: #07140c; border-color: var(--accent); }
+.hm-polar { display: flex; align-items: center; gap: 12px; background: rgba(91,200,245,.08); border: 1px solid rgba(91,200,245,.35); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+.hm-polar .t { flex: 1; font-size: 13px; line-height: 1.35; } .hm-polar b { display: block; font-size: 14px; }
+.hm-polar button { background: var(--ice); color: #06222e; border: none; border-radius: 10px; padding: 9px 12px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+.wkstrip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.wsd { text-align: center; padding: 8px 0 6px; border-radius: 12px; border: 1px solid transparent; cursor: pointer; }
+.wsd.today { border-color: var(--accent); background: rgba(61,255,140,.06); }
+.wsd .dl { font-size: 11px; color: var(--fg3); }
+.wsd .dot { width: 26px; height: 26px; border-radius: 50%; margin: 6px auto 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #07140c; background: var(--s3); }
+.wsd .wi { font-size: 14px; height: 18px; line-height: 18px; }
+.wsd.future { opacity: .35; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { background: var(--s1); border: 1px solid var(--s3); border-radius: 14px; padding: 12px 14px; }
+.tile .tl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.tile .tv { font-family: 'Bebas Neue', sans-serif; font-size: 34px; line-height: 1.1; margin-top: 2px; }
+.tile .tv small { font-size: 15px; color: var(--fg3); font-family: inherit; }
+.tile .td { font-size: 11px; color: var(--fg3); }
+.tile .gbar { height: 5px; border-radius: 3px; background: var(--s3); margin-top: 6px; overflow: hidden; }
+.tile .gbar i { display: block; height: 100%; background: var(--accent); }
+.trends { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.trends .tl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.trends .tv { font-family: 'Bebas Neue', sans-serif; font-size: 28px; }
+.spark { width: 100%; height: 46px; display: block; }
+.sp-empty { font-size: 12px; color: var(--fg3); padding: 14px 0; }
+.hero { position: relative; }
+.hero-edit { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.12); color: var(--fg); font-size: 18px; cursor: pointer; }
+.hero-top > div:last-child { padding-right: 30px; }
+.q-skip { background: none; border: none; color: var(--fg3); font-size: 13px; padding: 4px 0 14px; cursor: pointer; font-family: inherit; text-decoration: underline; }
+.st-line { font-size: 16px; font-weight: 600; margin-bottom: 4px; word-break: break-all; }
+.st-sub { font-size: 13px; color: var(--fg3); line-height: 1.45; margin: 4px 0 12px; }
+.st-kv { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.st-kv span:first-child { color: var(--fg3); }
+.wk-chips.goal { display: flex; gap: 6px; flex-wrap: nowrap; }
+.wk-chips.goal .wk-chip { flex: 1; min-width: 0; padding-left: 0; padding-right: 0; text-align: center; }
+.wk-link { background: none; border: none; color: var(--fg3); font-size: 13px; text-decoration: underline; cursor: pointer; padding: 10px 0 16px; font-family: inherit; display: block; margin: 0 auto; }
+#wk-form { display: none; }
+#splash { position: fixed; inset: 0; z-index: 99999; background: var(--bg); display: flex; align-items: center; justify-content: center; transition: opacity .5s ease; }
+#splash.hide { opacity: 0; pointer-events: none; }
+#splash .sp-in { text-align: center; animation: spIn .7s ease both; }
+#splash .sp-logo { width: 128px; height: 128px; border-radius: 28px; box-shadow: 0 0 60px rgba(61,255,140,.28); display: block; margin: 0 auto; }
+#splash .sp-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: .32em; margin: 22px 0 0 .32em; color: var(--fg); }
+#splash .sp-tag { font-size: 10px; letter-spacing: .28em; color: var(--accent); margin-top: 6px; }
+@keyframes spIn { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.hz-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 6px 0 4px; background: var(--fg3); }
+.hz-bar span { display: block; min-width: 2px; }
+.hz-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--fg2, var(--fg3)); }
+.hz-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.tip-line { font-size: 14px; line-height: 1.45; padding: 6px 0; }
+.tip-fact { font-size: 13px; line-height: 1.45; color: var(--fg2, var(--fg3)); padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--fg3); }
+.ep-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.ep-k { background: var(--bg2, rgba(255,255,255,.04)); border-radius: 12px; padding: 10px 8px; text-align: center; }
+.ep-k .v { font-size: 20px; font-weight: 700; color: var(--accent); }
+.ep-k .l { font-size: 11px; color: var(--fg3); margin-top: 2px; }
+.ep-row { font-size: 13px; padding: 5px 0; display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid rgba(255,255,255,.06); }
+.ep-row span:first-child { color: var(--fg3); white-space: nowrap; }
+.wk-edit { font-size: 32px; line-height: 1; padding: 6px 12px; color: var(--fg2, var(--fg3)); }
+.wk-del { min-width: 36px; min-height: 36px; }
+.wk-del.armed { color: var(--bad); font-weight: 600; }
+.wk-empty { font-size: 14px; color: var(--fg3); padding: 6px 0; }
+.wk-reco-line { font-size: 14px; color: var(--fg2); margin-bottom: 8px; }
+.wk-reco-line.wk-green  { color: var(--accent); }
+.wk-reco-line.wk-yellow { color: var(--warn); }
+.wk-reco-line.wk-red    { color: var(--bad); }
+
+/* ── HISTORY ── */
+.hist-item {
+  background: var(--s1); border-radius: var(--r);
+  border: 1px solid var(--s3); margin-bottom: 10px;
+  overflow: hidden;
+}
+.hi-main {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+}
+.hi-date { flex: 1; }
+.hi-date-day { font-size: 14px; font-weight: 600; color: var(--fg); }
+.hi-date-time { font-size: 12px; color: var(--fg3); }
+.hi-pct-chip {
+  font-family: 'Bebas Neue', sans-serif; font-size: 16px;
+  padding: 4px 10px; border-radius: 20px; letter-spacing: 0.04em;
+}
+.hi-zones { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 16px 14px; }
+.hi-detail { padding: 0 16px 14px; border-top: 1px solid var(--s3); display: none; }
+.hi-detail.open { display: block; padding-top: 12px; }
+.hi-stat-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px; font-size: 13px;
+}
+.hi-stat-label { color: var(--fg3); width: 112px; flex-shrink: 0; }
+.hi-stars { flex: 1; color: var(--fg2); }
+.hi-notes { font-size: 13px; color: var(--fg2); font-style: italic; margin-top: 6px; }
+
+#q-sleeph { margin-bottom: 16px; }
+.hi-sec { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg3); margin: 4px 0 8px; }
+.hi-detail .hi-sec ~ .hi-sec { margin-top: 14px; }
+.hist-empty { text-align: center; padding: 60px 20px; color: var(--fg3); font-size: 14px; }
+
+/* ── LOGIN ── */
+#login {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px max(24px, env(safe-area-inset-right, 0px)) 24px max(24px, env(safe-area-inset-left, 0px));
+}
+#login[hidden] { display: none; }
+#login-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+#login-form .home-name { margin-bottom: 14px; font-size: 44px; }
+#login-form input {
+  width: 100%; font: inherit; font-size: 17px; color: var(--fg);
+  background: var(--s1); border: 1px solid var(--s3); border-radius: var(--r-sm);
+  padding: 16px; outline: none;
+}
+#login-form input:focus { border-color: var(--accent); }
+#login-form .btn-go { width: 100%; padding: 16px; }
+#login-err { min-height: 20px; font-size: 14px; color: var(--bad); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  left: 50%; transform: translateX(-50%) translateY(10px);
+  background: var(--fg); color: var(--bg);
+  font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 20px;
+  white-space: nowrap; z-index: 999;
+  opacity: 0; transition: all 0.25s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#rot-hint { display: none; }
+@media (orientation: landscape) and (max-height: 520px) {
+  #rot-hint { display: flex; position: fixed; inset: 0; z-index: 9999; background: var(--bg); color: var(--fg);
+    align-items: center; justify-content: center; text-align: center; font-size: 18px; padding: 24px; }
+}
+
+/* ── ИИ-тренер ── */
+.ai-msg { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+.ai-msg.me { flex-direction: row-reverse; }
+.ai-msg .av { width: 30px; height: 30px; border-radius: 50%; background: var(--s2); border: 1px solid var(--s3); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.ai-msg .bub { background: var(--s2); border: 1px solid var(--s3); border-radius: 14px; padding: 10px 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-width: calc(100% - 42px); }
+.ai-msg.me .bub { background: #3dff8c12; border-color: #3dff8c30; }
+.ai-err { border-left: 4px solid var(--bad); }
+.ai-thinking { color: var(--fg3); font-size: 13px; padding: 2px 0 10px; }
+.ai-compose { display: flex; gap: 8px; margin-top: 10px; position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 10px); }
+.ai-compose input { flex: 1; min-width: 0; background: var(--s2); border: 1px solid var(--s3); border-radius: 12px; color: var(--fg); font-family: 'Inter', sans-serif; font-size: 15px; padding: 12px; outline: none; }
+.ai-compose input:focus { border-color: var(--accent); }
+.ai-send { width: 48px; flex-shrink: 0; border: none; border-radius: 12px; background: var(--accent); color: #0f0f12; font-size: 18px; cursor: pointer; }
+.ai-send:disabled { opacity: 0.4; }
+.ai-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+</style>
+
+<div id="splash"><div class="sp-in"><svg class="sp-logo" width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="APEX"><rect width="128" height="128" rx="28" fill="#18181f"/><text x="64" y="88" text-anchor="middle" font-family="system-ui,'Inter',sans-serif" font-size="76" font-weight="700" fill="#3dff8c">A</text><rect x="46" y="100" width="36" height="6" rx="3" fill="#e8e8f0"/></svg><div class="sp-name">APEX</div><div class="sp-tag">ГОТОВНОСТЬ · НАГРУЗКА · ПУЛЬС</div></div></div>
+<div id="rot-hint">📱 Поверни телефон вертикально</div>
+<!-- APP -->
+<div id="app">
+
+  <!-- ── HOME ── -->
+  <div class="screen active" id="s-home">
+    <div id="home-body"></div>
+  </div>
+
+  <!-- ── QUESTIONNAIRE ── -->
+  <div class="screen" id="s-check">
+    <div class="screen-hdr">
+      <div class="home-greeting">Утренний</div>
+      <div class="home-name">ОПРОСНИК</div>
+    </div>
+
+    <!-- Already done today -->
+    <div id="q-done-view" style="display:none"></div>
+
+    <!-- Question flow -->
+    <div id="q-flow">
+      <div class="q-prog-dots" id="q-dots"></div>
+      <button class="q-skip" onclick="skipQ()">Пропустить сегодня</button>
+
+      <!-- Q1: Sleep -->
+      <div class="q-step" id="q-step-1">
+        <div class="q-label">Вопрос 1 из 5</div>
+        <div class="q-title">Качество сна</div>
+        <div class="q-hint">Как ты спал этой ночью?</div>
+        <div class="scale-row">
+          <button class="scale-btn" data-q="sleep" data-v="1" onclick="pick('sleep',1,this)">1<span class="slabel">Плохо</span></button>
+          <button class="scale-btn" data-q="sleep" data-v="2" onclick="pick('sleep',2,this)">2<span class="slabel">Слабо</span></button>
+          <button class="scale-btn" data-q="sleep" data-v="3" onclick="pick('sleep',3,this)">3<span class="slabel">Норма</span></button>
+          <button class="scale-btn" data-q="sleep" data-v="4" onclick="pick('sleep',4,this)">4<span class="slabel">Хорошо</span></button>
+          <button class="scale-btn" data-q="sleep" data-v="5" onclick="pick('sleep',5,this)">5<span class="slabel">Отлично</span></button>
+        </div>
+        <div class="wk-sec">Сколько часов спал <span class="wk-opt">по желанию</span></div>
+        <div class="wk-chips" id="q-sh-chips">
+          <button class="wk-chip" data-v="5" onclick="sleepH(5)">5</button>
+          <button class="wk-chip" data-v="6" onclick="sleepH(6)">6</button>
+          <button class="wk-chip" data-v="7" onclick="sleepH(7)">7</button>
+          <button class="wk-chip" data-v="8" onclick="sleepH(8)">8</button>
+          <button class="wk-chip" data-v="9" onclick="sleepH(9)">9</button>
+        </div>
+        <input class="wk-input" id="q-sleeph" type="text" inputmode="decimal" placeholder="Или своё, например 7.5" oninput="sleepHInput()">
+        <div class="wk-sec">Данные часов <span class="wk-opt">по желанию</span></div>
+        <div class="ex-nums" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+          <div><label>Оценка сна (0–100)</label><input class="wk-input" id="q-sleeps" type="text" inputmode="numeric" placeholder="например 82" style="margin:0"></div>
+          <div><label>Средний пульс за ночь</label><input class="wk-input" id="q-sleephr" type="text" inputmode="numeric" placeholder="например 52" style="margin:0"></div>
+        </div>
+        <div class="q-nav">
+          <button class="btn-next" id="next-1" onclick="nextQ(2)" disabled>Далее</button>
+        </div>
+      </div>
+
+      <!-- Q2: Energy -->
+      <div class="q-step" id="q-step-2">
+        <div class="q-label">Вопрос 2 из 5</div>
+        <div class="q-title">Уровень энергии</div>
+        <div class="q-hint">Как ощущается энергетика прямо сейчас?</div>
+        <div class="scale-row">
+          <button class="scale-btn" data-q="energy" data-v="1" onclick="pick('energy',1,this)">1<span class="slabel">Нет сил</span></button>
+          <button class="scale-btn" data-q="energy" data-v="2" onclick="pick('energy',2,this)">2<span class="slabel">Слабость</span></button>
+          <button class="scale-btn" data-q="energy" data-v="3" onclick="pick('energy',3,this)">3<span class="slabel">Норма</span></button>
+          <button class="scale-btn" data-q="energy" data-v="4" onclick="pick('energy',4,this)">4<span class="slabel">Бодрый</span></button>
+          <button class="scale-btn" data-q="energy" data-v="5" onclick="pick('energy',5,this)">5<span class="slabel">Мощь</span></button>
+        </div>
+        <div class="q-nav">
+          <button class="btn-back" onclick="nextQ(1)">←</button>
+          <button class="btn-next" id="next-2" onclick="nextQ(3)" disabled>Далее</button>
+        </div>
+      </div>
+
+      <!-- Q3: Mood -->
+      <div class="q-step" id="q-step-3">
+        <div class="q-label">Вопрос 3 из 5</div>
+        <div class="q-title">Настроение</div>
+        <div class="q-hint">Как ты себя чувствуешь эмоционально?</div>
+        <div class="emoji-row">
+          <button class="emoji-btn" onclick="pick('mood',1,this)">😩<span class="elabel">Тяжело</span></button>
+          <button class="emoji-btn" onclick="pick('mood',2,this)">😕<span class="elabel">Не очень</span></button>
+          <button class="emoji-btn" onclick="pick('mood',3,this)">😐<span class="elabel">Норма</span></button>
+          <button class="emoji-btn" onclick="pick('mood',4,this)">🙂<span class="elabel">Хорошо</span></button>
+          <button class="emoji-btn" onclick="pick('mood',5,this)">😄<span class="elabel">Отлично</span></button>
+        </div>
+        <div class="q-nav">
+          <button class="btn-back" onclick="nextQ(2)">←</button>
+          <button class="btn-next" id="next-3" onclick="nextQ(4)" disabled>Далее</button>
+        </div>
+      </div>
+
+      <!-- Q4: Zones -->
+      <div class="q-step" id="q-step-4">
+        <div class="q-label">Вопрос 4 из 5</div>
+        <div class="q-title">Болевые зоны</div>
+        <div class="q-hint">Есть ли дискомфорт или болезненность?</div>
+        <div class="zone-grid">
+          <button class="zone-btn ok" data-zone="none" onclick="toggleZone('none',this)">✅<span class="zlabel">Всё ок</span></button>
+          <button class="zone-btn" data-zone="legs" onclick="toggleZone('legs',this)">🦵<span class="zlabel">Ноги</span></button>
+          <button class="zone-btn" data-zone="back" onclick="toggleZone('back',this)">🔙<span class="zlabel">Спина</span></button>
+          <button class="zone-btn" data-zone="hip" onclick="toggleZone('hip',this)">🦴<span class="zlabel">Пах</span></button>
+          <button class="zone-btn" data-zone="knee" onclick="toggleZone('knee',this)">🦵<span class="zlabel">Колени</span></button>
+          <button class="zone-btn" data-zone="shoulder" onclick="toggleZone('shoulder',this)">💪<span class="zlabel">Плечи</span></button>
+          <button class="zone-btn" data-zone="glutes" onclick="toggleZone('glutes',this)">🍑<span class="zlabel">Ягодицы</span></button>
+          <button class="zone-btn" data-zone="other" onclick="toggleZone('other',this)">❓<span class="zlabel">Другое</span></button>
+        </div>
+        <div class="q-nav">
+          <button class="btn-back" onclick="nextQ(3)">←</button>
+          <button class="btn-next" onclick="nextQ(5)">Далее</button>
+        </div>
+      </div>
+
+      <!-- Q5: Readiness -->
+      <div class="q-step" id="q-step-5">
+        <div class="q-label">Вопрос 5 из 5</div>
+        <div class="q-title">Готовность к тренировке</div>
+        <div class="q-hint">Как готов работать сегодня?</div>
+        <div class="scale-row">
+          <button class="scale-btn" onclick="pick('ready',1,this)">1<span class="slabel">Не готов</span></button>
+          <button class="scale-btn" onclick="pick('ready',2,this)">2<span class="slabel">Слабо</span></button>
+          <button class="scale-btn" onclick="pick('ready',3,this)">3<span class="slabel">Норма</span></button>
+          <button class="scale-btn" onclick="pick('ready',4,this)">4<span class="slabel">Готов</span></button>
+          <button class="scale-btn" onclick="pick('ready',5,this)">5<span class="slabel">100%</span></button>
+        </div>
+        <div class="q-nav">
+          <button class="btn-back" onclick="nextQ(4)">←</button>
+          <button class="btn-next" id="next-5" onclick="nextQ(6)" disabled>Далее</button>
+        </div>
+      </div>
+
+      <!-- Q6: Notes -->
+      <div class="q-step" id="q-step-6">
+        <div class="q-label">Дополнительно</div>
+        <div class="q-title">Заметки</div>
+        <div class="q-hint">Что-то важное сегодня? (необязательно)</div>
+        <textarea class="notes-ta" id="q-notes" placeholder="Плохо спал из-за шума... Левое колено с вчера..."></textarea>
+        <div class="q-nav">
+          <button class="btn-back" onclick="nextQ(5)">←</button>
+          <button class="btn-next" onclick="submitQ()">Сохранить</button>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="q-step" id="q-step-result">
+        <div id="q-result-content"></div>
+        <button class="btn-home" onclick="goTab('home')">На главную</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WORKOUT ── -->
+  <div class="screen" id="s-plan">
+    <div class="screen-hdr">
+      <div class="home-greeting">Сегодня</div>
+      <div class="home-name">ТРЕНИРОВКА</div>
+      <div class="sub" id="plan-date-sub"></div>
+    </div>
+
+    <div id="wk-reco"></div>
+    <div id="wk-polar"></div>
+    <button class="wk-link" id="wk-manual" onclick="showWkForm(true)">Тренировка без пульсометра</button>
+
+    <div class="card" id="wk-form">
+      <div class="card-label" id="wk-form-title">Записать тренировку</div>
+      <div class="zone-grid wk-types" id="wk-types">
+        <button class="zone-btn" onclick="wkType('ice',this)">🏒<span class="zlabel">Лёд</span></button>
+        <button class="zone-btn" onclick="wkType('gym',this)">🏋️<span class="zlabel">Зал</span></button>
+        <button class="zone-btn" onclick="wkType('cardio',this)">🏃<span class="zlabel">Кардио</span></button>
+        <button class="zone-btn" onclick="wkType('rec',this)">🧘<span class="zlabel">Восстановление</span></button>
+        <button class="zone-btn" onclick="wkType('other',this)">⚡<span class="zlabel">Другое</span></button>
+        <button class="zone-btn" onclick="wkType('rest',this)">😴<span class="zlabel">Отдых</span></button>
+      </div>
+
+      <div id="wk-detail" style="display:none">
+        <div class="wk-sec">Длительность, мин</div>
+        <div class="wk-chips">
+          <button class="wk-chip" data-v="30" onclick="wkDur(30)">30</button>
+          <button class="wk-chip" data-v="45" onclick="wkDur(45)">45</button>
+          <button class="wk-chip" data-v="60" onclick="wkDur(60)">60</button>
+          <button class="wk-chip" data-v="90" onclick="wkDur(90)">90</button>
+          <button class="wk-chip" data-v="120" onclick="wkDur(120)">120</button>
+        </div>
+        <input class="wk-input" id="wk-dur" type="number" inputmode="numeric" min="1" max="600" placeholder="Или своё число" oninput="wkCheck()">
+
+        <div class="wk-sec">Насколько тяжело</div>
+        <div class="rpe-row" id="wk-rpe">
+          <button class="rpe-btn" onclick="wkRpe(1,this)">1</button>
+          <button class="rpe-btn" onclick="wkRpe(2,this)">2</button>
+          <button class="rpe-btn" onclick="wkRpe(3,this)">3</button>
+          <button class="rpe-btn" onclick="wkRpe(4,this)">4</button>
+          <button class="rpe-btn" onclick="wkRpe(5,this)">5</button>
+          <button class="rpe-btn" onclick="wkRpe(6,this)">6</button>
+          <button class="rpe-btn" onclick="wkRpe(7,this)">7</button>
+          <button class="rpe-btn" onclick="wkRpe(8,this)">8</button>
+          <button class="rpe-btn" onclick="wkRpe(9,this)">9</button>
+          <button class="rpe-btn" onclick="wkRpe(10,this)">10</button>
+        </div>
+        <div class="rpe-legend"><span>1 — очень легко</span><span>10 — предел</span></div>
+
+        <div class="wk-sec">Качество работы <span class="wk-opt">по желанию</span></div>
+        <div class="rpe-row five" id="wk-q">
+          <button class="rpe-btn" onclick="wkQ(1,this)">1</button>
+          <button class="rpe-btn" onclick="wkQ(2,this)">2</button>
+          <button class="rpe-btn" onclick="wkQ(3,this)">3</button>
+          <button class="rpe-btn" onclick="wkQ(4,this)">4</button>
+          <button class="rpe-btn" onclick="wkQ(5,this)">5</button>
+        </div>
+        <div class="rpe-legend"><span>1 — всё валилось</span><span>5 — отлично получалось</span></div>
+
+        <div class="wk-sec">Самочувствие после <span class="wk-opt">по желанию</span></div>
+        <div class="rpe-row five" id="wk-a">
+          <button class="rpe-btn" onclick="wkA(1,this)">1</button>
+          <button class="rpe-btn" onclick="wkA(2,this)">2</button>
+          <button class="rpe-btn" onclick="wkA(3,this)">3</button>
+          <button class="rpe-btn" onclick="wkA(4,this)">4</button>
+          <button class="rpe-btn" onclick="wkA(5,this)">5</button>
+        </div>
+        <div class="rpe-legend"><span>1 — разбит</span><span>5 — бодрый</span></div>
+
+        <div class="wk-sec">Упражнения <span class="wk-opt">по желанию</span></div>
+        <div id="wk-ex"></div>
+        <button class="wk-chip" style="margin-top:6px" onclick="exAdd()">+ Упражнение</button>
+        <datalist id="ex-names"></datalist>
+      </div>
+
+      <div class="wk-sec">Заметка</div>
+      <textarea class="notes-ta" id="wk-notes" style="min-height:70px" placeholder="Что делал, как ощущения..."></textarea>
+      <button class="btn-go" id="wk-save" style="width:100%" onclick="saveWorkout()" disabled>Сохранить</button>
+      <button class="btn-go" id="wk-cancel" style="width:100%;margin-top:8px;background:none;border:1px solid var(--fg3);color:var(--fg2,var(--fg3))" onclick="resetWkForm()" hidden>Отменить редактирование</button>
+    </div>
+
+    <div id="wk-today"></div>
+    <div id="ai-wk-note"></div>
+    <div id="wk-recent"></div>
+  </div>
+
+  <!-- ── ANALYTICS ── -->
+  <div class="screen" id="s-stats">
+    <div class="screen-hdr">
+      <div class="home-greeting">Связи и нагрузка</div>
+      <div class="home-name">АНАЛИЗ</div>
+    </div>
+    <button class="btn-go ai-week-btn" id="ai-week-btn" style="width:100%;margin-bottom:8px" onclick="aiWeekly()">🤖 ИИ-разбор недели</button>
+    <div id="ai-weekly"></div>
+    <div id="stats-body"></div>
+    <div id="ex-progress"></div>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div class="screen" id="s-history">
+    <div class="screen-hdr">
+      <div class="home-greeting">Журнал</div>
+      <div class="home-name">ИСТОРИЯ</div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- ── AI ── -->
+  <div class="screen" id="s-ai">
+    <div class="screen-hdr">
+      <div class="home-greeting">Твой ИИ-тренер</div>
+      <div class="home-name">ЧАТ С КЛОДОМ</div>
+      <div class="sub" id="ai-sub"></div>
+    </div>
+    <div id="ai-body"></div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="screen" id="s-settings">
+    <div class="screen-hdr">
+      <div class="home-greeting">Аккаунт и данные</div>
+      <div class="home-name">ПРОФИЛЬ</div>
+    </div>
+    <div id="settings-body"></div>
+  </div>
+
+  <!-- ── Bottom Nav ── -->
+  <nav id="nav">
+    <button class="nav-btn active" id="nav-home" onclick="goTab('home')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21v-8h6v8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>Главная</span>
+    </button>
+    <button class="nav-btn" id="nav-plan" onclick="goTab('plan')">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Тренировка</span>
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="goTab('stats')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Анализ</span>
+    </button>
+    <button class="nav-btn" id="nav-ai" onclick="goTab('ai')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.6 0-3.1-.4-4.3-1.2L3 20l1.3-4.1A8.5 8.5 0 1121 11.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8.8" cy="11.5" r="1.2" fill="currentColor"/><circle cx="12.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="16.2" cy="11.5" r="1.2" fill="currentColor"/></svg>
+      <span>ИИ</span>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="goTab('history')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>История</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="goTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Профиль</span>
+    </button>
+  </nav>
+</div>
+
+<!-- LOGIN -->
+<div id="login" hidden>
+  <form id="login-form" autocomplete="on">
+    <div class="home-greeting">Вход</div>
+    <div class="home-name">APEX</div>
+    <input id="login-email" type="email" name="email" autocomplete="username" placeholder="Почта" required>
+    <input id="login-pass" type="password" name="password" autocomplete="current-password" placeholder="Пароль" required>
+    <div id="login-err"></div>
+    <button class="btn-go" type="submit" id="login-btn">Войти</button>
+  </form>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Firebase ───────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDKe_38BGeU99BhMczkETRweZxyby8CxLU",
+  authDomain: "goalie-track.firebaseapp.com",
+  projectId: "goalie-track",
+  storageBucket: "goalie-track.firebasestorage.app",
+  messagingSenderId: "403715725211",
+  appId: "1:403715725211:web:ad0bfbba7e4f99dcb6f33e",
+  measurementId: "G-L5NQF9XTBV"
+};
+
+let db = null;
+const USER_ID = 'dmitri'; // one user for now
+
+try {
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(e) { console.warn('Firebase init failed:', e); }
+
+async function fbSaveEntry(entry) {
+  if (!db || !navigator.onLine) return false;
+  try {
+    const key = localDay(entry.ts);
+    await db.collection('users').doc(USER_ID).collection('entries').doc(key).set(entry);
+    return true;
+  } catch(e) { console.warn('Firestore write error:', e); return false; }
+}
+
+async function fbLoadEntries() {
+  if (!db || !navigator.onLine) return null;
+  try {
+    const snap = await db.collection('users').doc(USER_ID).collection('entries')
+      .orderBy('ts','desc').limit(90).get();
+    return snap.docs.map(d => d.data());
+  } catch(e) { console.warn('Firestore read error:', e); return null; }
+}
+
+async function fbSaveWorkout(w) {
+  if (!db || !navigator.onLine) return false;
+  try {
+    await db.collection('users').doc(USER_ID).collection('workouts').doc(w.id).set(w);
+    return true;
+  } catch(e) { console.warn('Firestore workout write error:', e); return false; }
+}
+
+async function fbDeleteWorkout(id) {
+  if (!db || !navigator.onLine) return false;
+  try {
+    await db.collection('users').doc(USER_ID).collection('workouts').doc(id).delete();
+    return true;
+  } catch(e) { console.warn('Firestore workout delete error:', e); return false; }
+}
+
+async function fbLoadWorkouts() {
+  if (!db || !navigator.onLine) return null;
+  try {
+    const snap = await db.collection('users').doc(USER_ID).collection('workouts')
+      .orderBy('ts','desc').limit(400).get();
+    return snap.docs.map(d => d.data());
+  } catch(e) { console.warn('Firestore workout read error:', e); return null; }
+}
+
+// Пульсометр Polar: сессии, которые кладёт в Firestore GitHub-синхронизация
+async function fbLoadPolar() {
+  if (!db || !navigator.onLine) return null;
+  try {
+    const snap = await db.collection('users').doc(USER_ID).collection('polar')
+      .orderBy('ts','desc').limit(60).get();
+    return snap.docs.map(d => d.data());
+  } catch(e) { console.warn('Firestore polar read error:', e); return null; }
+}
+function getPolar() {
+  try { return JSON.parse(localStorage.getItem('gt_polar') || '[]'); } catch { return []; }
+}
+
+// ── State ──────────────────────────────────────────
+const S = {
+  tab: 'home',
+  qStep: 1,
+  ans: { sleep: 0, energy: 0, mood: 0, zones: [], ready: 0, notes: '' },
+  wk: { type: null, rpe: 0, q: 0, after: 0 }
+};
+
+const ZONES_LABEL = { none:'Всё ок', legs:'Ноги', back:'Спина', hip:'Пах', knee:'Колени', shoulder:'Плечи', glutes:'Ягодицы', other:'Другое' };
+const MOOD_EMOJI = { 1:'😩', 2:'😕', 3:'😐', 4:'🙂', 5:'😄' };
+const TYPE_COLOR = { ice:'#5bc8f5', gym:'#ff8c3d', video:'#b47cf5', rec:'#3dff8c', check:'#3dff8c', rest:'#9090b0' };
+const TYPE_LABEL = { ice:'На льду', gym:'Физо', video:'Видео', rec:'Восстановление', check:'Опросник', rest:'Отдых' };
+
+// ── Storage (localStorage + Firestore sync) ────────
+function todayKey() { return localDay(Date.now()); }
+
+function getEntries() {
+  try { return JSON.parse(localStorage.getItem('gt_entries') || '[]'); } catch { return []; }
+}
+function cloudMsg(ok, okText) {
+  if (ok) return okText;
+  return navigator.onLine ? '⚠ Не сохранилось в облако' : '📴 Сохранено на телефоне. Отправится, когда появится сеть';
+}
+function saveEntry(e) {
+  const arr = getEntries().filter(x => localDay(x.ts) !== todayKey());
+  arr.push(e);
+  try { localStorage.setItem('gt_entries', JSON.stringify(arr.slice(-90))); } catch {}
+  // Подтверждение только после ответа облака
+  fbSaveEntry(e).then(ok => showToast(cloudMsg(ok, 'Сохранено в облако ✓')));
+}
+function getTodayEntry() {
+  return getEntries().find(e => localDay(e.ts) === todayKey()) || null;
+}
+function getWorkouts() {
+  try { return JSON.parse(localStorage.getItem('gt_workouts') || '[]'); } catch { return []; }
+}
+function setWorkouts(arr) {
+  try { localStorage.setItem('gt_workouts', JSON.stringify(arr.slice(-400))); } catch {}
+}
+
+// Load from Firestore into localStorage on startup
+async function syncFromCloud() {
+  const cloud = await fbLoadEntries();
+  if (cloud) {
+    // Слияние по дням: побеждает запись с более поздним временем.
+    // Если на телефоне запись новее облачной — досылаем её в облако.
+    const day = e => localDay(e.ts);
+    const byDay = {};
+    cloud.forEach(e => { byDay[day(e)] = e; });
+    getEntries().forEach(e => {
+      const k = day(e);
+      if (!byDay[k] || e.ts > byDay[k].ts) { byDay[k] = e; fbSaveEntry(e); }
+    });
+    const merged = Object.values(byDay).sort((a, b) => a.ts - b.ts).slice(-90);
+    try { localStorage.setItem('gt_entries', JSON.stringify(merged)); } catch {}
+  }
+  const cloudW = await fbLoadWorkouts();
+  if (cloudW) {
+    // Слияние по id; тренировки, которых нет в облаке, досылаем
+    const byId = {};
+    cloudW.forEach(w => { byId[w.id] = w; });
+    getWorkouts().forEach(w => { const c = byId[w.id]; if (!c || (w.mt || 0) > (c.mt || 0)) { byId[w.id] = w; fbSaveWorkout(w); } });
+    setWorkouts(Object.values(byId).sort((a, b) => a.ts - b.ts));
+  }
+  const cloudP = await fbLoadPolar();
+  if (cloudP) { try { localStorage.setItem('gt_polar', JSON.stringify(cloudP)); } catch {} }
+  // Re-render after cloud sync
+  renderHome();
+  if (S.tab === 'history') renderHistory();
+  if (S.tab === 'plan') renderPlan();
+  if (S.tab === 'stats') renderStats();
+  if (S.tab === 'check') renderCheck();
+}
+
+// ── Navigation ─────────────────────────────────────
+function goTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('s-' + tab).classList.add('active');
+  const nb = document.getElementById('nav-' + (tab === 'check' ? 'home' : tab));
+  if (nb) nb.classList.add('active');
+  S.tab = tab;
+  if (tab === 'settings') renderSettings();
+  window.scrollTo(0, 0);
+  if (tab === 'home') renderHome();
+  if (tab === 'check') renderCheck();
+  if (tab === 'plan') renderPlan();
+  if (tab === 'stats') renderStats();
+  if (tab === 'history') renderHistory();
+  if (tab === 'ai') renderAI();
+}
+
+// ── Greeting ───────────────────────────────────────
+function greeting() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'Доброе утро,';
+  if (h >= 12 && h < 18) return 'Добрый день,';
+  if (h >= 18 && h < 23) return 'Добрый вечер,';
+  return 'Доброй ночи,';
+}
+function ruDate(ts) {
+  return new Date(ts || Date.now()).toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'});
+}
+
+// ── HOME ───────────────────────────────────────────
+const WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+function getGoal() { try { const g = parseInt(localStorage.getItem('gt_goal'), 10); return g >= 1 && g <= 7 ? g : 4; } catch { return 4; } }
+function setGoal(g) {
+  try { localStorage.setItem('gt_goal', String(g)); } catch {}
+  renderSettings(); showToast('Цель: ' + g + ' в неделю');
+}
+function editQ() { goTab('check'); redoQ(); }
+function skipQ() {
+  try { localStorage.setItem('gt_qskip', todayKey()); } catch {}
+  goTab('home');
+}
+function maybeOpenQ() {
+  try {
+    if (S.tab !== 'home' || getTodayEntry() || localStorage.getItem('gt_qskip') === todayKey()) return;
+    goTab('check');
+  } catch {}
+}
+function signOutUser() {
+  try { firebase.auth().signOut().catch(() => {}); } catch {}
+}
+function renderSettings() {
+  const el = document.getElementById('settings-body');
+  if (!el) return;
+  let email = '—', cloudLine = '☁️ Облако: ✗ не входили — данные только на этом устройстве';
+  try { const u = firebase.auth().currentUser; if (u && u.email) { email = u.email; cloudLine = '☁️ Облако: ✓ вошли — синхронизация включена'; } } catch {}
+  const polar = getPolar();
+  const last = polar.reduce((m, p) => Math.max(m, Date.parse(p.synced_at || '') || 0), 0);
+  const lastTxt = last ? new Date(last).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'ещё нет данных';
+  const goal = getGoal();
+  el.innerHTML = `
+    <div class="card"><div class="card-label">Аккаунт</div>
+      <div class="st-line">${esc(email)}</div>
+      <div class="st-sub" style="margin-bottom:8px">${esc(cloudLine)}</div>
+      <div class="st-sub">Данные хранятся в облаке и доступны на всех твоих устройствах.</div>
+      <button class="btn-home" onclick="signOutUser()">Выйти</button></div>
+    <div class="card"><div class="card-label">Цель недели</div>
+      <div class="st-sub">Сколько тренировок в неделю ты хочешь делать. Показывается на главной.</div>
+      <div class="wk-chips goal">${[1,2,3,4,5,6,7].map(n => `<button class="wk-chip${n === goal ? ' selected' : ''}" onclick="setGoal(${n})">${n}</button>`).join('')}</div></div>
+    <div class="card"><div class="card-label">Пульсометр Polar</div>
+      <div class="st-kv"><span>Сессий в облаке</span><span>${polar.length}</span></div>
+      <div class="st-kv"><span>Последняя синхронизация</span><span>${esc(lastTxt)}</span></div>
+      <div class="st-sub" style="margin-bottom:0">Новые тренировки приходят сами, проверка каждые 30 минут после загрузки в Polar Flow.</div></div>
+    <div class="card"><div class="card-label">🤖 ИИ-тренер</div>
+      <div class="st-sub">Работает через OpenRouter. Ключ хранится только в этом браузере и никуда не пересылается. Каждый запрос стоит доли цента с твоих Credits.</div>
+      <input class="wk-input" id="set-aikey" type="password" autocomplete="off" placeholder="sk-or-v1-…" value="${esc(AI.key.get())}" style="margin-bottom:8px">
+      <button class="btn-home" style="margin:0 0 10px" onclick="aiSaveKey()">💾 Сохранить ключ</button>
+      <div class="wk-sec">Модель ИИ</div>
+      <select class="wk-input" id="set-aimodel" onchange="aiSetModel(this.value)" style="margin-bottom:2px">${AI_MODELS.map(m => `<option value="${m.id}"${AI.model.get() === m.id ? ' selected' : ''}>${m.n}</option>`).join('')}</select>
+      <div class="wk-sec">О спортсмене <span class="wk-opt">по желанию — ИИ будет учитывать</span></div>
+      <textarea class="notes-ta" id="set-aiabout" style="min-height:64px;margin-bottom:8px" placeholder="Например: тренер вратарей. Тренируюсь почти каждый день, режим ближе к фитнесу. Сон с Apple Watch вношу вручную.">${esc(AI.about.get())}</textarea>
+      <button class="btn-home" style="margin:0 0 10px" onclick="aiSaveAbout()">💾 Сохранить описание</button>
+      <button class="btn-home" style="margin:0" onclick="aiTest()">🔌 Проверить связь</button>
+    </div>
+    <div class="card"><div class="card-label">📦 Данные и облако</div>
+      <div class="st-sub" id="cloud-status">${esc(CLOUD.lastStatus || 'Проверка не запускалась — нажми кнопку ниже')}</div>
+      <button class="btn-home" style="margin:0 0 8px" onclick="cloudCheck()">🔄 Проверить облако</button>
+      <button class="btn-home" style="margin:0 0 8px" onclick="exportJSON()">⬇️ Экспорт данных (сохранить файл)</button>
+      <button class="btn-home" style="margin:0" onclick="document.getElementById('import-file').click()">⬆️ Импорт данных (выбрать файл)</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+      <div class="st-sub" style="margin-top:8px">Экспорт — страховка от потери: сохраняй файл почаще. Импорт — перенос на новое устройство или восстановление.</div>
+    </div>
+    <div class="card"><div class="card-label">Приложение</div>
+      <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 28.10.2026</span></div>
+      <div class="st-sub" style="margin-bottom:0">Утреннее напоминание: на iPhone «Команды» → «Автоматизация» → «Время суток» → «Открыть приложение».</div></div>`;
+}
+function streakDays() {
+  const set = new Set(getEntries().map(e => localDay(e.ts)));
+  let n = 0; const t = new Date();
+  if (!set.has(localDay(t))) t.setDate(t.getDate() - 1);
+  while (set.has(localDay(t))) { n++; t.setDate(t.getDate() - 1); }
+  return n;
+}
+function spark(vals, color) {
+  const w = 150, h = 46, pad = 4;
+  const pts = vals.map((v, i) => ({ v, i })).filter(p => p.v !== null && p.v !== undefined);
+  if (pts.length < 3) return '<div class="sp-empty">мало данных</div>';
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v)), span = hi - lo || 1;
+  const X = i => pad + i * (w - 2 * pad) / (vals.length - 1), Y = v => h - pad - (v - lo) / span * (h - 2 * pad);
+  const d = pts.map((p, k) => (k ? 'L' : 'M') + X(p.i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const lp = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${w} ${h}" class="spark"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${X(lp.i).toFixed(1)}" cy="${Y(lp.v).toFixed(1)}" r="3.2" fill="${color}"/></svg>`;
+}
+function deltaTxt(a, b, unit, dec) {
+  if (a === null || b === null || a === undefined || b === undefined) return 'нет данных для сравнения';
+  const d = a - b;
+  if (Math.abs(d) < (dec ? 0.05 : 0.5)) return 'как неделей ранее';
+  return (d > 0 ? '▲ +' : '▼ −') + Math.abs(d).toFixed(dec ? 1 : 0) + (unit || '') + ' к прошлой неделе';
+}
+
+function renderHome() {
+  const el = document.getElementById('home-body');
+  if (!el) return;
+  const entry = getTodayEntry();
+  const reco = getReco();
+  const D = buildDays();
+  const byK = {}; D.forEach(d => { byK[d.k] = d; });
+  const todayK = localDay(Date.now());
+  const todayW = getWorkouts().filter(w => localDay(w.ts) === todayK).sort((a, b) => b.ts - a.ts);
+  const streak = streakDays();
+
+  // ── шапка
+  let html = `<div class="hm-hdr"><div>
+      <div class="hm-brand">APEX</div>
+      <div class="home-greeting" style="margin-bottom:2px">${greeting()}</div>
+      <div class="hm-name">ДМИТРИЙ</div>
+      <div class="hm-date">${ruDate()}</div>
+    </div>${streak >= 1 ? `<div class="hm-streak"><b>🔥 ${streak}</b><span>${streak % 10 === 1 && streak !== 11 ? 'день' : 'дн.'} подряд</span></div>` : ''}</div>`;
+
+  // ── главный блок: готовность
+  if (entry && reco) {
+    const pct = reco.pct, circ = 2 * Math.PI * 46, off = circ * (1 - pct / 100);
+    const pain = (entry.zones || []).filter(z => z !== 'none').map(z => (ZONES_LABEL[z] || z).toLowerCase());
+    const st = [['😴', 'Сон', entry.sleep], ['⚡', 'Энергия', entry.energy], [MOOD_EMOJI[entry.mood], 'Настр.', entry.mood], ['💪', 'Готов.', entry.ready]];
+    html += `<div class="hero lvl-${reco.level}"><button class="hero-edit" onclick="editQ()" title="Изменить ответы">✎</button>
+      <div class="hero-top">
+        <div class="hero-ring"><svg viewBox="0 0 104 104"><circle class="rg-bg" cx="52" cy="52" r="46"/><circle class="rg-fg" cx="52" cy="52" r="46" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg>
+          <div class="hero-pct">${pct}<small>%</small></div></div>
+        <div><div class="hero-title">${reco.title.toUpperCase()}</div>
+          <div class="hero-sub">${esc(reco.short.charAt(0).toUpperCase() + reco.short.slice(1))}</div>
+          ${pain.length ? `<div class="hero-pain">🩹 Береги: ${esc(pain.join(', '))}</div>` : ''}</div>
+      </div>
+      <div class="hero-stats">${st.map(x => `<div class="hs"><div class="e">${x[0]}</div><div class="v">${x[2]}/5</div><div class="l">${x[1]}</div><div class="bar"><i style="width:${x[2] / 5 * 100}%"></i></div></div>`).join('')}</div>
+    </div>`;
+  } else {
+    html += `<div class="hero lvl-green"><div class="hero-cta"><div class="t">КАК ТЫ СЕГОДНЯ?</div>
+      <div class="s">Опросник займёт минуту, и я подскажу нагрузку на день</div>
+      <button class="btn-go" style="width:100%" onclick="goTab('check')">Заполнить опросник</button></div></div>`;
+  }
+
+  // ── ИИ-брифинг на день
+  if (entry) {
+    const brief = aiGetBrief();
+    html += brief
+      ? `<div id="ai-brief-box">${briefCardHTML(brief, true)}</div>`
+      : `<button class="btn-home ai-brief-btn" style="margin-bottom:12px;margin-top:0" onclick="aiBrief()">🤖 ИИ-брифинг на сегодня</button>`;
+  }
+
+  // ── тренировка с пульсометра, ещё не записанная
+  const used = new Set(getWorkouts().map(w => w.polarId).filter(Boolean));
+  const pend = getPolar().filter(p => !used.has(p.id) && Date.now() - p.ts < 14 * 86400000)[0];
+  if (pend) {
+    const min = Math.max(1, Math.round((pend.duration || 0) / 60));
+    html += `<div class="hm-polar"><div class="t"><b>⌚ Тренировка с пульсометра</b>${min} мин · пульс ${pend.hr_avg || '—'} / ${pend.hr_max || '—'}${pend.calories ? ' · ' + pend.calories + ' ккал' : ''}</div>
+      <button onclick="goTab('plan');polarPick('${esc(pend.id)}')">Дополнить</button></div>`;
+  }
+
+  // ── быстрые действия
+
+  // ── сегодня
+  html += todayW.length
+    ? `<div class="card"><div class="card-label">Сегодня</div>${todayW.map(w => wkItemHTML(w, false, false)).join('')}</div>`
+    : (pend ? '' : `<div class="card"><div class="card-label">Сегодня</div><div class="wk-empty">Тренировки пока нет. Она появится здесь сама после загрузки в Polar Flow.</div><button class="btn-home" onclick="quickRest()">😴 Сегодня отдых</button></div>`);
+
+  html += '<div id="tip-wrap"></div>';
+
+  // ── неделя по дням
+  const now = new Date(), dow = (now.getDay() + 6) % 7;
+  const strip = [];
+  for (let i = 0; i < 7; i++) {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + i), k = localDay(t), d = byK[k];
+    const future = k > todayK;
+    const pc = d && d.e ? pctOf(d.e) : null;
+    const col = pc === null ? '' : `background:${pc >= 70 ? 'var(--accent)' : pc >= 40 ? 'var(--warn)' : 'var(--bad)'}`;
+    const tr = d && (d.w || []).filter(w => w.type !== 'rest');
+    const ico = tr && tr.length ? (WK_TYPES[tr[0].type] || WK_TYPES.other).e : (d && (d.w || []).length ? '😴' : '');
+    strip.push(`<div class="wsd${k === todayK ? ' today' : ''}${future ? ' future' : ''}" onclick="goTab('history')"><div class="dl">${WD[i]}</div><div class="dot" style="${col}">${pc === null ? '' : pc}</div><div class="wi">${ico}</div></div>`);
+  }
+  html += `<div class="card"><div class="card-label">Эта неделя</div><div class="wkstrip">${strip.join('')}</div></div>`;
+
+  // ── плитки за 7 дней
+  const w7 = D.slice(-7), p7 = D.slice(-14, -7);
+  const sess = a => a.reduce((s, d) => s + (d.w || []).filter(w => w.type !== 'rest').length, 0);
+  const mins = a => a.reduce((s, d) => s + (d.w || []).reduce((x, w) => x + (w.type === 'rest' ? 0 : (w.dur || 0)), 0), 0);
+  const avgM = (a, f) => { const v = a.map((d, i) => f(a, i)).filter(x => x !== null); return v.length ? avgOf(v) : null; };
+  const goal = getGoal(), ns = sess(w7);
+  const sleepNow = avgM(w7, MET.sleepH), sleepPrev = avgM(p7, MET.sleepH);
+  const readyNow = avgM(w7, MET.pct), readyPrev = avgM(p7, MET.pct);
+  const minNow = mins(w7), minPrev = p7.length ? mins(p7) : null;
+  html += `<div class="tiles" style="margin-bottom:12px">
+    <div class="tile"><div class="tl">Тренировки</div><div class="tv">${ns}<small> / ${goal}</small></div><div class="gbar"><i style="width:${Math.min(100, ns / goal * 100)}%"></i></div><div class="td">цель недели</div></div>
+    <div class="tile"><div class="tl">Минут</div><div class="tv">${minNow}</div><div class="td">${deltaTxt(minNow, minPrev, ' мин')}</div></div>
+    <div class="tile"><div class="tl">Сон</div><div class="tv">${sleepNow !== null ? sleepNow.toFixed(1) : '—'}<small> ч</small></div><div class="td">${deltaTxt(sleepNow, sleepPrev, ' ч', 1)}</div></div>
+    <div class="tile"><div class="tl">Готовность</div><div class="tv">${readyNow !== null ? Math.round(readyNow) : '—'}<small> %</small></div><div class="td">${deltaTxt(readyNow, readyPrev, '%')}</div></div>
+  </div>`;
+
+  // ── тренды 14 дней
+  const L = D.slice(-14);
+  if (L.length >= 5) {
+    const rv = L.map((d, i) => MET.pct(L, i)), sv = L.map((d, i) => MET.sleepH(L, i));
+    const lastV = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] !== null) return a[i]; return null; };
+    const rl = lastV(rv), sl = lastV(sv);
+    html += `<div class="card"><div class="card-label">Тренд за 14 дней</div><div class="trends">
+      <div><div class="tl">Готовность</div><div class="tv">${rl !== null ? Math.round(rl) + '%' : '—'}</div>${spark(rv, 'var(--accent)')}</div>
+      <div><div class="tl">Сон, ч</div><div class="tv">${sl !== null ? sl.toFixed(1) : '—'}</div>${spark(sv, 'var(--ice)')}</div>
+    </div></div>`;
+  }
+
+  el.innerHTML = html;
+  renderTips();
+}
+
+// ── Подсказки на главной ──
+const FACTS = [
+ 'Основное восстановление мышц и гормональный баланс идут во сне. Стабильное время отбоя важнее, чем «добрать» сон в выходные.',
+ 'Потеря даже около 2% массы тела с жидкостью заметно снижает реакцию и концентрацию. Пей воду в течение дня, а не только на тренировке.',
+ 'Кофеин держится в организме 5–6 часов. Чтобы он не мешал засыпанию, последний кофе лучше выпить за 8 часов до сна.',
+ 'Яркий свет и экран за час до сна задерживают засыпание. Приглушённый свет вечером помогает.',
+ 'Белок лучше распределять на 3–5 приёмов по 20–40 г, а не съедать всё за один раз.',
+ 'Прогресс идёт не во время тренировки, а в восстановлении после неё. Недосып и отсутствие выходных съедают эффект нагрузки.',
+ 'Динамическая разминка 10–15 минут перед тренировкой лучше готовит к нагрузке, чем долгая статическая растяжка.',
+ 'После тяжёлой тренировки в течение пары часов полезны углеводы и белок: так быстрее восстанавливается гликоген.',
+ 'Для вратаря подвижность тазобедренных суставов критична. 5 минут мобилизации каждый день лучше, чем час раз в неделю.',
+ 'Ледяная ванна сразу после силовой может замедлять силовую адаптацию. Если нужно восстановиться быстро, разводи по времени с силовой.',
+ 'Зона пульса Z2 тренирует аэробную базу, а она помогает быстрее восстанавливаться между повторными усилиями.',
+ 'Оценку тяжести лучше ставить сразу после тренировки: через несколько часов память подсказывает уже усреднённое.',
+ 'Каждые 3–4 недели полезно снижать объём нагрузки примерно на 30–40%, чтобы организм успел закрепить прогресс.',
+ 'Хронический недосып у спортсменов связывают с большим риском травм и более медленным восстановлением.',
+ 'Утренний пульс покоя, выше обычного на 5–7 ударов и более, иногда говорит об усталости или начинающейся болезни. Смотри на динамику, а не на одно число.',
+ 'Медленное дыхание носом после тренировки помогает быстрее переключиться в режим восстановления.',
+ 'Короткий дневной сон до 20–30 минут помогает бодрости и не мешает ночному сну, если не ложиться слишком поздно.',
+ 'Заметки о самочувствии через месяц часто ценнее цифр: по ним видно, что именно предшествовало плохим дням.',
+ 'Активация ягодичных и мобильность перед льдом помогают держать позицию и снижают нагрузку на колени и поясницу.',
+ 'Силовая работа 2 раза в неделю в сезоне достаточна, чтобы сохранять силу, если тренировки на льду уже нагружают организм.',
+ 'Один тяжёлый день ничего не ломает. Проблемы появляются, когда тяжёлых дней несколько подряд и между ними нет восстановления.',
+ 'Ходьба 5–10 минут после нагрузки помогает плавно снизить пульс и немного ускоряет восстановление.'
+];
+function dataTips() {
+  const D = buildDays();
+  if (D.length < 2) return [];
+  const out = [], last = D.length - 1;
+  const sh = D.slice(-3).map(d => d.e && d.e.sleepH > 0 ? d.e.sleepH : null).filter(v => v !== null);
+  if (sh.length >= 2 && avgOf(sh) < 7) out.push(`😴 В последние ночи ты спал в среднем ${avgOf(sh).toFixed(1)} ч, меньше 7. Если можно, сегодня ложись пораньше.`);
+  const s2 = D.slice(-2).map(d => d.e ? d.e.sleep : null);
+  if (s2.length === 2 && s2.every(v => v !== null && v <= 2)) out.push('😴 Два дня подряд сон оценён на 1–2. Сегодня лучше без лишней нагрузки.');
+  let streak = 0;
+  for (let i = hasTrain(D[last]) ? last : last - 1; i >= 0 && hasTrain(D[i]); i--) streak++;
+  if (streak >= 4) out.push(`⚡ ${streak} тренировочных дня подряд без отдыха. Поставь день восстановления.`.replace('дня', streak >= 5 ? 'дней' : 'дня'));
+  const sumLoad = (a, b) => { let s = 0; for (let i = Math.max(0, a); i <= b; i++) s += loadOf(D[i]); return s; };
+  const prior = [];
+  for (let k = 1; k <= 4; k++) { const a = last - 6 - 7 * k; if (a >= 0) prior.push(sumLoad(a, a + 6)); }
+  const chronic = prior.length >= 2 ? avgOf(prior) : null;
+  if (chronic && chronic > 0) {
+    const r = sumLoad(last - 6, last) / chronic;
+    if (r > 1.3) out.push(`📈 Нагрузка за 7 дней в ${r.toFixed(1)} раза выше обычной. Следи за самочувствием и сном.`);
+    else if (r < 0.7) out.push('📉 Нагрузка за 7 дней заметно ниже обычной. Если самочувствие хорошее, можно добавить.');
+  }
+  const cnt = {};
+  D.slice(-5).forEach(d => ((d.e && d.e.zones) || []).forEach(z => { if (z !== 'none') cnt[z] = (cnt[z] || 0) + 1; }));
+  Object.keys(cnt).filter(z => cnt[z] >= 3).slice(0, 1).forEach(z =>
+    out.push(`🩹 «${(ZONES_LABEL[z] || z).toLowerCase()}» отмечается уже ${cnt[z]} раза за 5 дней. Если не проходит, покажи врачу.`));
+  out.sort((x, y) => (y.startsWith('🩹') ? 1 : 0) - (x.startsWith('🩹') ? 1 : 0));
+  return out.slice(0, 3);
+}
+function renderTips() {
+  const el = document.getElementById('tip-wrap');
+  if (!el) return;
+  const now = new Date();
+  const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  const tips = dataTips();
+  el.innerHTML = `<div class="card"><div class="card-label">💡 Подсказки на сегодня</div>`
+    + tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('')
+    + `<div class="tip-fact">📌 <b>Факт дня.</b> ${esc(FACTS[doy % FACTS.length])}</div></div>`;
+}
+
+// ── Сводка для Claude ──
+function buildSummary() {
+  const D = buildDays().slice(-28).filter(isTracked);
+  const L = [];
+  L.push(`Ниже мои данные из приложения APEX за последние ${D.length} дн. Шкалы опросника 1–5 (5 — лучшее), тяжесть тренировки 1–10, «работа» и «после» 1–5. Пульс с Polar H10.`);
+  L.push('Проанализируй: 1) связи между сном, нагрузкой, пульсом и самочувствием; 2) признаки перегрузки или недовосстановления; 3) 3–5 конкретных выводов; 4) рекомендации на ближайшую неделю; 5) каких данных не хватает для лучшего анализа. Объясняй рассуждения и не давай диагнозов.');
+  L.push('');
+  D.forEach(d => {
+    const e = d.e;
+    let line = d.k + ': ';
+    if (e) {
+      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', средний пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
+      const z = (e.zones || []).filter(x => x !== 'none').map(x => ZONES_LABEL[x] || x);
+      if (z.length) line += ', болит: ' + z.join(', ');
+      if (e.notes) line += ', заметка: ' + e.notes;
+    } else line += 'опросник не заполнен';
+    L.push(line);
+    (d.w || []).forEach(w => {
+      if (w.type === 'rest') { L.push('  · выходной'); return; }
+      let t = `  · ${(WK_TYPES[w.type] || WK_TYPES.other).l}, ${w.dur} мин, тяжесть ${w.rpe}/10`;
+      if (w.q) t += `, работа ${w.q}/5`;
+      if (w.after) t += `, после ${w.after}/5`;
+      const h = hrOf(w);
+      if (h) {
+        t += `, пульс ${h.avg}/${h.max}`;
+        if (h.cal) t += `, ${h.cal} ккал`;
+        const zs = (h.z || []).map((sec, i) => sec > 0 ? `${i === 0 ? '<Z1' : 'Z' + i} ${Math.round(sec / 60)} мин` : '').filter(Boolean);
+        if (zs.length) t += `, время в зонах: ${zs.join(', ')}`;
+      }
+      if ((w.ex || []).length) t += '; упражнения: ' + w.ex.map(x => `${x.n}${x.s || x.r ? ' ' + (x.s || '?') + '×' + (x.r || '?') : ''}${x.kg !== undefined ? '×' + x.kg + ' кг' : ''}`).join(', ');
+      if (w.notes) t += '; заметка: ' + w.notes;
+      L.push(t);
+    });
+  });
+  return L.join('\n');
+}
+// ── ИИ-тренер (OpenRouter) ─────────────────────────
+let _aiBusy = false;
+const AI_MODELS = [
+  { id: 'anthropic/claude-sonnet-4.5', n: 'Claude Sonnet 4.5 — основная' },
+  { id: 'google/gemini-2.5-flash', n: 'Gemini 2.5 Flash — запасная, дешевле' },
+  { id: 'openai/gpt-4o-mini', n: 'GPT-4o mini — запасная, самая дешёвая' }
+];
+const AI = {
+  key: {
+    get: () => { try { return localStorage.getItem('gt_aikey') || ''; } catch { return ''; } },
+    set: v => { try { v ? localStorage.setItem('gt_aikey', v) : localStorage.removeItem('gt_aikey'); } catch {} }
+  },
+  model: {
+    get: () => { try { return localStorage.getItem('gt_aimodel') || 'anthropic/claude-sonnet-4.5'; } catch { return 'anthropic/claude-sonnet-4.5'; } },
+    set: v => { try { localStorage.setItem('gt_aimodel', v); } catch {} }
+  },
+  about: {
+    get: () => { try { return localStorage.getItem('gt_aiabout') || ''; } catch { return ''; } },
+    set: v => { try { v ? localStorage.setItem('gt_aiabout', v) : localStorage.removeItem('gt_aiabout'); } catch {} }
+  }
+};
+
+function aiSys() {
+  const about = AI.about.get();
+  return 'Ты — ИИ-тренер в приложении APEX: трекере готовности и нагрузки спортсмена (хоккей, вратарская специализация). '
+    + 'Данные: утренний опросник — качество сна 1–5, энергия 1–5, настроение 1–5, болевые зоны, готовность к тренировке 1–5, часы сна, оценка сна с часов 0–100, средний пульс за ночь; '
+    + 'тренировки — лёд/зал/кардио/восстановление/отдых, длительность, тяжесть RPE 1–10, качество работы 1–5, самочувствие после 1–5, упражнения (подходы×повторы×кг), пульс и зоны с Polar H10. '
+    + 'Правила: отвечай по-русски; коротко и по делу, без воды; используй только приведённые данные и не выдумывай числа; если данных мало — честно скажи; '
+    + 'не ставь медицинских диагнозов, при стойких болях советуй врача или спортивного доктора; тон живой и поддерживающий, на «ты»; эмодзи умеренно; '
+    + 'без markdown-разметки: короткие абзацы или списки строками с дефиса. '
+    + (about ? 'Контекст от спортсмена: ' + about : '');
+}
+
+// Компактный дамп данных за nDays дней (сегодня — последняя строка)
+function aiDump(nDays, noHeader) {
+  const D = buildDays().slice(-nDays).filter(isTracked);
+  const L = [];
+  if (!noHeader) {
+    L.push(`Мои данные из APEX за последние ${D.length} дн. (сегодня — последняя строка):`);
+    L.push('');
+  }
+  D.forEach(d => {
+    const e = d.e;
+    let line = d.k + ': ';
+    if (e) {
+      line += `готовность ${pctOf(e)}%, сон ${e.sleep}/5${e.sleepH ? ' (' + e.sleepH + ' ч)' : ''}${e.sleepScore ? ', оценка сна часов ' + e.sleepScore + '/100' : ''}${e.sleepHR ? ', пульс за ночь ' + e.sleepHR : ''}, энергия ${e.energy}/5, настроение ${e.mood}/5, готовность ${e.ready}/5`;
+      const z = (e.zones || []).filter(x => x !== 'none').map(x => ZONES_LABEL[x] || x);
+      if (z.length) line += ', болит: ' + z.join(', ');
+      if (e.notes) line += ', заметка: ' + e.notes;
+    } else line += 'опросник не заполнен';
+    L.push(line);
+    (d.w || []).forEach(w => {
+      if (w.type === 'rest') { L.push('  · выходной'); return; }
+      let t = `  · ${(WK_TYPES[w.type] || WK_TYPES.other).l}, ${w.dur} мин, тяжесть ${w.rpe}/10`;
+      if (w.q) t += `, работа ${w.q}/5`;
+      if (w.after) t += `, после ${w.after}/5`;
+      const h = hrOf(w);
+      if (h) {
+        t += `, пульс ${h.avg}/${h.max}`;
+        if (h.cal) t += `, ${h.cal} ккал`;
+        const zs = (h.z || []).map((sec, i) => sec > 0 ? `${i === 0 ? '<Z1' : 'Z' + i} ${Math.round(sec / 60)} мин` : '').filter(Boolean);
+        if (zs.length) t += `, время в зонах: ${zs.join(', ')}`;
+      }
+      if ((w.ex || []).length) t += '; упражнения: ' + w.ex.map(x => `${x.n}${x.s || x.r ? ' ' + (x.s || '?') + '×' + (x.r || '?') : ''}${x.kg !== undefined ? '×' + x.kg + ' кг' : ''}`).join(', ');
+      if (w.notes) t += '; заметка: ' + w.notes;
+      L.push(t);
+    });
+  });
+  return L.join('\n');
+}
+
+// Низкоуровневый вызов OpenRouter. messages: [{role, content}]. Бросает {ai: 'КОД'}
+async function aiCall(messages, opts) {
+  opts = opts || {};
+  if (!AI.key.get()) throw { ai: 'NOKEY' };
+  let resp;
+  try {
+    resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + AI.key.get(),
+        'HTTP-Referer': 'https://apex-goalietrack.local',
+        'X-Title': 'APEX Goalie Tracker'
+      },
+      body: JSON.stringify({
+        model: AI.model.get(),
+        max_tokens: opts.maxTokens || 900,
+        temperature: opts.temperature != null ? opts.temperature : 0.6,
+        messages: messages
+      })
+    });
+  } catch (e) { throw { ai: 'NET' }; }
+  if (!resp.ok) {
+    let detail = '';
+    try { const j = await resp.json(); detail = (j.error && j.error.message) || ''; } catch {}
+    if (resp.status === 401) throw { ai: 'KEYBAD' };
+    if (resp.status === 402) throw { ai: 'NOCREDITS' };
+    if (resp.status === 403) throw { ai: 'REGION' };
+    if (resp.status === 429) throw { ai: 'RATE' };
+    throw { ai: 'OTHER', msg: 'HTTP ' + resp.status + (detail ? ' — ' + detail : '') };
+  }
+  let j;
+  try { j = await resp.json(); } catch (e) { throw { ai: 'EMPTY' }; }
+  const txt = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+  if (!txt) throw { ai: 'EMPTY' };
+  return String(txt).trim();
+}
+
+function aiErrText(e) {
+  const m = {
+    NOKEY: 'Сначала вставь ключ OpenRouter: Профиль → «ИИ-тренер»',
+    KEYBAD: 'Ключ не принят (401). Проверь, что он скопирован целиком, начинается с sk-or-v1-',
+    NOCREDITS: 'На OpenRouter закончились Credits. Пополни: openrouter.ai → Credits',
+    REGION: 'OpenRouter отклонил запрос (403). Попробуй другую модель: Профиль → «ИИ-тренер»',
+    RATE: 'Слишком много запросов подряд. Подожди минуту и попробуй снова',
+    NET: 'Не получилось связаться с OpenRouter. Проверь интернет',
+    EMPTY: 'Модель вернула пустой ответ. Попробуй ещё раз'
+  };
+  if (e && e.ai && m[e.ai]) return m[e.ai];
+  if (e && e.ai === 'OTHER') return '⚠ Ошибка ИИ: ' + (e.msg || 'неизвестная');
+  return '⚠ Ошибка ИИ: ' + ((e && e.message) || 'неизвестная');
+}
+
+// ── Фича 1: утренний брифинг ──
+function aiBriefKey() { return 'gt_ai_brief_' + todayKey(); }
+function aiGetBrief() {
+  try { return JSON.parse(localStorage.getItem(aiBriefKey()) || 'null'); } catch { return null; }
+}
+function briefCardHTML(b) {
+  const time = b.t ? new Date(b.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+  return `<div class="card" style="border-color:rgba(61,255,140,.35)">
+    <div class="card-label">🤖 ИИ-брифинг на день · ${time}</div>
+    <div style="font-size:14px;line-height:1.55;white-space:pre-wrap">${esc(b.txt)}</div>
+    <button class="card-link ai-brief-btn" style="margin-top:10px" onclick="aiBrief()">🔄 Обновить брифинг</button>
+  </div>`;
+}
+async function aiBrief() {
+  if (_aiBusy) return; _aiBusy = true;
+  const box = document.getElementById('ai-brief-box');
+  document.querySelectorAll('.ai-brief-btn').forEach(b => { b.dataset.old = b.textContent; b.textContent = '🤖 Claude думает…'; b.disabled = true; });
+  if (box) box.innerHTML = `<div class="card"><div class="ai-thinking">🤖 Собираю данные за 14 дней и спрашиваю Claude…</div></div>`;
+  const e = getTodayEntry();
+  const reco = getReco();
+  const prompt = `Вот мои данные за последние 14 дней (сегодня — последняя строка):\n\n${aiDump(14)}\n\n${reco ? `Правила приложения сегодня ставят день «${reco.title}» (${reco.pct}%).\n` : ''}Напиши короткий личный брифинг на сегодня, 6–9 строк: 1) что видно по моему состоянию (сон, энергия, зоны боли, свежесть после последних тренировок); 2) какой акцент выбрать сегодня и чего избегать; 3) один-два конкретных совета на день. Не пересказывай таблицу, сразу выводы и советы.`;
+  try {
+    const txt = await aiCall([{ role: 'system', content: aiSys() }, { role: 'user', content: prompt }], { maxTokens: 700 });
+    const b = { t: Date.now(), txt };
+    try { localStorage.setItem(aiBriefKey(), JSON.stringify(b)); } catch {}
+    if (box) box.innerHTML = briefCardHTML(b);
+    if (S.tab === 'home') renderHome();
+    showToast('Брифинг готов ✓');
+  } catch (err) {
+    if (box) box.innerHTML = '';
+    showToast(aiErrText(err));
+  } finally {
+    _aiBusy = false;
+    document.querySelectorAll('.ai-brief-btn').forEach(b => { if (b.dataset.old) b.textContent = b.dataset.old; b.disabled = false; });
+  }
+}
+
+// ── Фича 2: ИИ-разбор недели ──
+function aiWeekId() {
+  const d = new Date();
+  const dow = (d.getDay() + 6) % 7;
+  const th = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow + 3);
+  const isoFirst = new Date(th.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((th - isoFirst) / 86400000 - 3 + ((isoFirst.getDay() + 6) % 7)) / 7);
+  return th.getFullYear() + '-W' + String(week).padStart(2, '0');
+}
+function aiWeekKey() { return 'gt_ai_week_' + aiWeekId(); }
+function aiGetWeekly() {
+  try { return JSON.parse(localStorage.getItem(aiWeekKey()) || 'null'); } catch { return null; }
+}
+function weeklyCardHTML(b) {
+  const time = b.t ? new Date(b.t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  return `<div class="card" style="border-color:rgba(61,255,140,.35)">
+    <div class="card-label">🤖 ИИ-разбор недели · ${aiWeekId()} · ${time}</div>
+    <div style="font-size:14px;line-height:1.55;white-space:pre-wrap">${esc(b.txt)}</div>
+    <button class="card-link ai-week-btn" style="margin-top:10px" onclick="aiWeekly()">🔄 Обновить разбор</button>
+  </div>`;
+}
+async function aiWeekly() {
+  if (_aiBusy) return; _aiBusy = true;
+  const box = document.getElementById('ai-weekly');
+  document.querySelectorAll('.ai-week-btn').forEach(b => { b.dataset.old = b.textContent; b.textContent = '🤖 Claude разбирает неделю…'; b.disabled = true; });
+  if (box) box.innerHTML = `<div class="card"><div class="ai-thinking">🤖 Читаю 4 недели данных…</div></div>`;
+  const prompt = `Вот мои данные за последние 28 дней (сегодня — последняя строка):\n\n${aiDump(28)}\n\nСделай разбор последней недели на фоне предыдущих, структурировано: 1) Как прошла неделя — объём, тяжесть, сон, готовность (2–3 предложения); 2) Что настораживает — признаки перегрузки, недовосстановления или повторяющихся болей, если они есть; 3) План на следующую неделю — 3 конкретных пункта; 4) Одним предложением — главный фокус прямо сейчас. Не пересказывай таблицу.`;
+  try {
+    const txt = await aiCall([{ role: 'system', content: aiSys() }, { role: 'user', content: prompt }], { maxTokens: 1100 });
+    const b = { t: Date.now(), txt };
+    try { localStorage.setItem(aiWeekKey(), JSON.stringify(b)); } catch {}
+    if (box) box.innerHTML = weeklyCardHTML(b);
+    showToast('Разбор готов ✓');
+  } catch (err) {
+    const old = aiGetWeekly();
+    if (box) box.innerHTML = old ? weeklyCardHTML(old) : '';
+    showToast(aiErrText(err));
+  } finally {
+    _aiBusy = false;
+    document.querySelectorAll('.ai-week-btn').forEach(b => { if (b.dataset.old) b.textContent = b.dataset.old; b.disabled = false; });
+  }
+}
+
+// ── Фича 3: чат с ИИ ──
+const AI_CHIPS = ['Почему готовность ниже, чем на прошлой неделе?', 'Как прогрессируют мои силовые?', 'Что говорит пульс за ночь о восстановлении?', 'Составь план на завтра'];
+function aiChatHist() {
+  try { return JSON.parse(localStorage.getItem('gt_aichat') || '[]'); } catch { return []; }
+}
+function aiChatSave(h) {
+  try { localStorage.setItem('gt_aichat', JSON.stringify(h.slice(-40))); } catch {}
+}
+function aiChatClear() {
+  try { localStorage.removeItem('gt_aichat'); } catch {}
+  renderAI();
+}
+function renderAI() {
+  const body = document.getElementById('ai-body');
+  if (!body) return;
+  const sub = document.getElementById('ai-sub');
+  if (sub) sub.textContent = 'Модель: ' + AI.model.get() + ' · через OpenRouter';
+  if (!AI.key.get()) {
+    body.innerHTML = `<div class="card"><div class="card-label">🤖 Нужен ключ OpenRouter</div>
+      <div class="st-sub">ИИ-тренер работает через OpenRouter. Вставь API-ключ один раз — он сохранится в этом браузере и больше никуда не попадёт.</div>
+      <button class="btn-go" style="width:100%" onclick="goTab('settings')">Открыть профиль и вставить ключ</button></div>`;
+    return;
+  }
+  const h = aiChatHist();
+  const msgs = h.map(m => `<div class="ai-msg ${m.role === 'user' ? 'me' : ''}"><div class="av">${m.role === 'user' ? '🙂' : '🤖'}</div><div><div class="bub${m.err ? ' ai-err' : ''}">${esc(m.txt)}</div></div></div>`).join('');
+  body.innerHTML = `
+    ${h.length ? `<button class="wk-link" onclick="aiChatClear()">🧹 Очистить переписку</button>` : ''}
+    ${msgs || `<div class="card"><div class="card-label">Привет!</div><div class="st-sub">Я вижу твои данные из APEX за последние недели. Спроси что угодно — или выбери вопрос ниже.</div></div>`}
+    <div class="ai-chip-row">${AI_CHIPS.map(c => `<button class="wk-chip" onclick="aiQuick(this)">${esc(c)}</button>`).join('')}</div>
+    <div id="ai-chat-list"></div>
+    <div class="ai-compose">
+      <input id="ai-input" type="text" placeholder="Спроси про свои данные…" onkeydown="if(event.key==='Enter')aiSend()">
+      <button class="ai-send ai-send-btn" onclick="aiSend()">➤</button>
+    </div>`;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function aiQuick(btn) {
+  const inp = document.getElementById('ai-input');
+  if (!inp) return;
+  inp.value = btn.textContent;
+  aiSend();
+}
+async function aiSend() {
+  const inp = document.getElementById('ai-input');
+  const q = (inp && inp.value || '').trim();
+  if (!q || _aiBusy) return;
+  _aiBusy = true;
+  const send = document.querySelector('.ai-send-btn');
+  if (send) send.disabled = true;
+  if (inp) inp.value = '';
+  const list = document.getElementById('ai-chat-list');
+  if (list) list.insertAdjacentHTML('beforeend', `<div class="ai-msg me"><div class="av">🙂</div><div><div class="bub">${esc(q)}</div></div></div>`);
+  const think = document.createElement('div');
+  think.className = 'ai-thinking';
+  think.textContent = '🤖 Печатает…';
+  if (list) { list.appendChild(think); window.scrollTo(0, document.body.scrollHeight); }
+  const h = aiChatHist();
+  h.push({ role: 'user', txt: q });
+  const messages = [{ role: 'system', content: aiSys() + '\n\n' + aiDump(21) }]
+    .concat(h.map(m => ({ role: m.role, content: m.txt })));
+  try {
+    const txt = await aiCall(messages, { maxTokens: 900 });
+    h.push({ role: 'assistant', txt });
+    aiChatSave(h);
+    if (think) think.remove();
+    if (list) list.insertAdjacentHTML('beforeend', `<div class="ai-msg"><div class="av">🤖</div><div><div class="bub">${esc(txt)}</div></div></div>`);
+  } catch (err) {
+    if (think) think.remove();
+    const t = aiErrText(err);
+    h.push({ role: 'assistant', txt: t, err: 1 });
+    aiChatSave(h);
+    if (list) list.insertAdjacentHTML('beforeend', `<div class="ai-msg"><div class="av">🤖</div><div><div class="bub ai-err">${esc(t)}</div></div></div>`);
+  }
+  _aiBusy = false;
+  if (send) send.disabled = false;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+// ── Фича 4: комментарий ИИ к тренировке ──
+function wkNoteCardHTML(b) {
+  const time = b.t ? new Date(b.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+  return `<div class="card" style="border-color:rgba(61,255,140,.35)">
+    <div class="card-label">🤖 Комментарий ИИ · ${time}</div>
+    <div style="font-size:14px;line-height:1.55;white-space:pre-wrap">${esc(b.txt)}</div>
+    <button class="card-link ai-wk-btn" style="margin-top:10px" onclick="aiWorkoutNote()">🔄 Обновить</button>
+  </div>`;
+}
+async function aiWorkoutNote() {
+  if (_aiBusy) return;
+  const todays = getWorkouts().filter(w => localDay(w.ts) === todayKey() && w.type !== 'rest');
+  if (!todays.length) { showToast('Сначала запиши сегодняшнюю тренировку'); return; }
+  _aiBusy = true;
+  const w = todays[todays.length - 1];
+  document.querySelectorAll('.ai-wk-btn').forEach(b => { b.dataset.old = b.textContent; b.textContent = '🤖 Claude думает…'; b.disabled = true; });
+  const label = (WK_TYPES[w.type] || WK_TYPES.other).l;
+  const prompt = `Вот мои данные за последние 7 дней (сегодня — последняя строка, сегодня: «${label}» ${w.dur} мин, тяжесть ${w.rpe}/10):\n\n${aiDump(7)}\n\nДай короткий комментарий по сегодняшней тренировке (3–5 строк): как она выглядит на фоне недели (объём, тяжесть, пульс), чего сегодня-завтра не хватает или наоборот чего избегать. Без пересказа данных.`;
+  try {
+    const txt = await aiCall([{ role: 'system', content: aiSys() }, { role: 'user', content: prompt }], { maxTokens: 500 });
+    const b = { t: Date.now(), txt };
+    try { localStorage.setItem('gt_ai_wk_' + w.id, JSON.stringify(b)); } catch {}
+    const box = document.getElementById('ai-wk-note');
+    if (box) box.innerHTML = wkNoteCardHTML(b);
+    showToast('Комментарий готов ✓');
+  } catch (err) {
+    showToast(aiErrText(err));
+  } finally {
+    _aiBusy = false;
+    document.querySelectorAll('.ai-wk-btn').forEach(b => { if (b.dataset.old) b.textContent = b.dataset.old; b.disabled = false; });
+  }
+}
+
+// ── Фича 5: объяснение связи из «Анализа» ──
+function aiExplainCor(a, b, lag) {
+  const spec = COR_SPECS.find(s => s.a === a && s.b === b && s.lag === lag);
+  if (!spec) return;
+  const c = corr(buildDays(), a, b, lag);
+  const r = c.r != null ? c.r.toFixed(2) : '—';
+  goTab('ai');
+  setTimeout(() => {
+    const inp = document.getElementById('ai-input');
+    if (!inp) return;
+    inp.value = `Объясни простыми словами, что означает связь «${spec.name}» (r=${r}, ${c.n} дн.) в моих данных, и что делать практически.`;
+    aiSend();
+  }, 80);
+}
+
+// ── Настройки ИИ в профиле ──
+function aiSaveKey() {
+  const el = document.getElementById('set-aikey');
+  const v = (el && el.value || '').trim();
+  AI.key.set(v);
+  showToast(v ? 'Ключ сохранён в этом браузере ✓' : 'Ключ удалён');
+  renderSettings();
+}
+function aiSetModel(v) {
+  AI.model.set(v);
+  showToast('Модель: ' + v);
+}
+function aiSaveAbout() {
+  const el = document.getElementById('set-aiabout');
+  const v = (el && el.value || '').trim();
+  AI.about.set(v);
+  showToast(v ? 'Описание сохранено ✓' : 'Описание удалено');
+}
+async function aiTest() {
+  if (_aiBusy) return;
+  if (!AI.key.get()) { showToast('Сначала вставь ключ и сохрани'); return; }
+  _aiBusy = true;
+  showToast('🤖 Проверяю связь…');
+  try {
+    await aiCall([{ role: 'user', content: 'Ответь ровно одним словом: связь есть?' }], { maxTokens: 30, temperature: 0 });
+    showToast('Связь есть ✓ ИИ работает');
+  } catch (err) {
+    showToast(aiErrText(err));
+  } finally {
+    _aiBusy = false;
+  }
+}
+
+function renderWeekStats() {
+  const entries = getEntries();
+  const wrap = document.getElementById('week-stats-wrap');
+  if (!wrap) return;
+  if (entries.length === 0) { wrap.innerHTML = ''; return; }
+  const week = entries.slice(-7);
+  const avg = (key) => (week.reduce((s,e) => s + (e[key]||0), 0) / week.length).toFixed(1);
+  const avgSleep = avg('sleep'), avgEnergy = avg('energy'), avgMood = avg('mood'), avgReady = avg('ready');
+  const color = (v) => v >= 4 ? 'var(--accent)' : v >= 3 ? 'var(--warn)' : 'var(--bad)';
+  wrap.innerHTML = `
+    <div class="card-label">Средние за ${week.length} дн.</div>
+    <div class="week-stats-grid">
+      <div class="wstat">
+        <div class="wstat-label">😴 Сон</div>
+        <div class="wstat-val" style="color:${color(avgSleep)}">${avgSleep}</div>
+        <div class="wstat-sub">из 5</div>
+      </div>
+      <div class="wstat">
+        <div class="wstat-label">⚡ Энергия</div>
+        <div class="wstat-val" style="color:${color(avgEnergy)}">${avgEnergy}</div>
+        <div class="wstat-sub">из 5</div>
+      </div>
+      <div class="wstat">
+        <div class="wstat-label">😊 Настроение</div>
+        <div class="wstat-val" style="color:${color(avgMood)}">${avgMood}</div>
+        <div class="wstat-sub">из 5</div>
+      </div>
+      <div class="wstat">
+        <div class="wstat-label">💪 Готовность</div>
+        <div class="wstat-val" style="color:${color(avgReady)}">${avgReady}</div>
+        <div class="wstat-sub">из 5</div>
+      </div>
+    </div>`;
+}
+
+// ── QUESTIONNAIRE ──────────────────────────────────
+function renderCheck() {
+  const entry = getTodayEntry();
+  const doneView = document.getElementById('q-done-view');
+  const flow = document.getElementById('q-flow');
+  if (entry) {
+    doneView.style.display = 'block';
+    flow.style.display = 'none';
+    doneView.innerHTML = buildResultHTML(entry)
+      + `<button class="btn-go" onclick="redoQ()" style="width:100%;margin-top:4px;margin-bottom:10px">Пройти заново</button>`
+      + `<button class="btn-home" onclick="goTab('home')" style="margin-top:4px">На главную</button>`;
+  } else {
+    doneView.style.display = 'none';
+    flow.style.display = 'block';
+    renderDots(1);
+    showStep(S.qStep);
+  }
+}
+
+function redoQ() {
+  S.qStep = 1;
+  S.ans = { sleep: 0, energy: 0, mood: 0, zones: [], ready: 0, notes: '' };
+  const flow = document.getElementById('q-flow');
+  flow.querySelectorAll('.selected').forEach(b => b.classList.remove('selected'));
+  ['next-1','next-2','next-3','next-5'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = true; });
+  const notes = document.getElementById('q-notes'); if (notes) notes.value = '';
+  resetSleepH();
+  document.getElementById('q-done-view').style.display = 'none';
+  flow.style.display = 'block';
+  renderDots(1);
+  showStep(1);
+  window.scrollTo(0, 0);
+}
+
+function renderDots(active) {
+  document.getElementById('q-dots').innerHTML = [1,2,3,4,5,6].map(i => {
+    const cls = i < active ? 'q-dot done' : i === active ? 'q-dot active' : 'q-dot';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+}
+
+function showStep(n) {
+  document.querySelectorAll('.q-step').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('q-step-' + n) || document.getElementById('q-step-result');
+  if (target) target.classList.add('active');
+  if (n !== 'result') renderDots(n);
+}
+
+function nextQ(n) {
+  S.qStep = n;
+  showStep(n);
+  window.scrollTo(0,0);
+}
+
+function pick(key, val, btn) {
+  S.ans[key] = val;
+  btn.closest('.scale-row, .emoji-row') && btn.closest('.scale-row, .emoji-row').querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  // enable next
+  const nextMap = { sleep:'next-1', energy:'next-2', mood:'next-3', ready:'next-5' };
+  const nextBtn = document.getElementById(nextMap[key]);
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+function toggleZone(zone, btn) {
+  if (zone === 'none') {
+    S.ans.zones = S.ans.zones.includes('none') ? [] : ['none'];
+    document.querySelectorAll('[data-zone]').forEach(b => b.classList.remove('selected'));
+    if (S.ans.zones.includes('none')) btn.classList.add('selected');
+  } else {
+    S.ans.zones = S.ans.zones.filter(z => z !== 'none');
+    document.querySelector('[data-zone="none"]').classList.remove('selected');
+    if (S.ans.zones.includes(zone)) {
+      S.ans.zones = S.ans.zones.filter(z => z !== zone);
+      btn.classList.remove('selected');
+    } else {
+      S.ans.zones.push(zone);
+      btn.classList.add('selected');
+    }
+  }
+}
+
+function sleepH(v) {
+  document.getElementById('q-sleeph').value = v;
+  sleepHInput();
+}
+function sleepHInput() {
+  const v = parseFloat(document.getElementById('q-sleeph').value.replace(',', '.'));
+  document.querySelectorAll('#q-sh-chips .wk-chip').forEach(c => c.classList.toggle('selected', +c.dataset.v === v));
+}
+function resetSleepH() {
+  ['q-sleeph','q-sleeps','q-sleephr'].forEach(id => { const x = document.getElementById(id); if (x) x.value = ''; });
+  document.querySelectorAll('#q-sh-chips .wk-chip').forEach(c => c.classList.remove('selected'));
+}
+
+function submitQ() {
+  S.ans.notes = document.getElementById('q-notes').value.trim();
+  if (!S.ans.zones.length) S.ans.zones = ['none'];
+  const entry = { ...S.ans, ts: Date.now() };
+  const sh = parseFloat(document.getElementById('q-sleeph').value.replace(',', '.'));
+  if (sh >= 1 && sh <= 16) entry.sleepH = Math.round(sh * 10) / 10;
+  const sc = parseInt(document.getElementById('q-sleeps').value, 10);
+  if (sc >= 1 && sc <= 100) entry.sleepScore = sc;
+  const shr = parseInt(document.getElementById('q-sleephr').value, 10);
+  if (shr >= 30 && shr <= 120) entry.sleepHR = shr;
+  resetSleepH();
+  saveEntry(entry);
+  document.getElementById('q-result-content').innerHTML = buildResultHTML(entry);
+  showStep('result');
+  // Reset for next time
+  S.ans = { sleep: 0, energy: 0, mood: 0, zones: [], ready: 0, notes: '' };
+}
+
+function buildResultHTML(entry) {
+  const avg = (entry.sleep + entry.energy + entry.mood + entry.ready) / 4;
+  const pct = Math.round(avg / 5 * 100);
+  const circ = 2 * Math.PI * 54;
+  const offset = circ * (1 - pct / 100);
+  const color = pct >= 70 ? 'var(--accent)' : pct >= 40 ? 'var(--warn)' : 'var(--bad)';
+  const zoneLabel = (!entry.zones || !entry.zones.length || entry.zones[0] === 'none')
+    ? [{ label:'Всё хорошо', ok:true }]
+    : entry.zones.map(z => ({ label: ZONES_LABEL[z]||z, ok:false }));
+
+  return `
+    <div class="result-ring-wrap" style="position:relative;width:140px;height:140px;margin:0 auto 24px">
+      <svg viewBox="0 0 140 140" width="140" height="140">
+        <circle fill="none" stroke="var(--s3)" stroke-width="10" cx="70" cy="70" r="54"/>
+        <circle fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+          cx="70" cy="70" r="54"
+          stroke-dasharray="${circ}"
+          stroke-dashoffset="${offset}"
+          transform="rotate(-90 70 70)"/>
+      </svg>
+      <div class="result-pct-big">
+        <div class="num" style="color:${color}">${pct}</div>
+        <div class="lbl">% ГОТОВНОСТЬ</div>
+      </div>
+    </div>
+    <div class="result-tiles">
+      ${[['😴 Сон' + (entry.sleepH ? ' · ' + entry.sleepH + ' ч' : '') + (entry.sleepScore ? ' · часы ' + entry.sleepScore : ''),entry.sleep],['⚡ Энергия',entry.energy],[MOOD_EMOJI[entry.mood]+' Настроение',entry.mood],['💪 Готовность',entry.ready]]
+        .map(([l,v]) => `<div class="result-tile"><div class="rt-label">${l}</div><div class="rt-val">${v}/5</div><div class="rt-bar-track"><div class="rt-bar-fill" style="width:${v/5*100}%"></div></div></div>`)
+        .join('')}
+    </div>
+    <div class="zones-row">
+      ${zoneLabel.map(z => `<span class="zone-chip${z.ok?' ok':''}">${z.label}</span>`).join('')}
+    </div>
+    ${entry.notes ? `<div class="result-note">📝 ${esc(entry.notes)}</div>` : ''}
+    <button class="btn-go ai-brief-btn" style="width:100%;margin-top:10px" onclick="aiBrief()">🤖 ИИ-брифинг на сегодня</button>
+    <div id="ai-brief-box" style="margin-top:12px"></div>`;
+}
+
+// ── WORKOUTS ───────────────────────────────────────
+const WK_TYPES = {
+  ice:    { l: 'Лёд',            e: '🏒' },
+  gym:    { l: 'Зал',            e: '🏋️' },
+  cardio: { l: 'Кардио',         e: '🏃' },
+  rec:    { l: 'Восстановление', e: '🧘' },
+  other:  { l: 'Другое',         e: '⚡' },
+  rest:   { l: 'Отдых',          e: '😴' }
+};
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// Локальная дата (по часовому поясу телефона), чтобы ночные тренировки не уезжали на другой день
+function localDay(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+// Подсказка по нагрузке: простые правила по опроснику и последним тренировкам
+function getReco() {
+  const e = getTodayEntry();
+  if (!e) return null;
+  const pct = Math.round((e.sleep + e.energy + e.mood + e.ready) / 4 / 5 * 100);
+  const zones = (e.zones || []).filter(z => z !== 'none');
+  const zl = zones.map(z => (ZONES_LABEL[z] || z).toLowerCase());
+  const since = Date.now() - 3 * 86400000;
+  const heavy = getWorkouts().filter(w => w.ts >= since && w.type !== 'rest' && w.rpe >= 8).length;
+  let level;
+  if (pct < 45 || zones.length >= 3 || (e.sleep <= 2 && e.energy <= 2)) level = 'red';
+  else if (pct < 70 || zones.length >= 1 || heavy >= 2) level = 'yellow';
+  else level = 'green';
+  const extra = [];
+  if (zl.length) extra.push('Береги: ' + zl.join(', ') + '.');
+  if (heavy >= 2) extra.push('За 3 дня уже ' + heavy + ' тяжёлых тренировок (8+).');
+  const map = {
+    green:  { title: 'Зелёный день',  short: 'можно работать в полную силу',
+              text: 'Готовность хорошая. Можно работать в полную силу.' },
+    yellow: { title: 'Жёлтый день',   short: 'умеренная нагрузка',
+              text: 'Лучше умеренная нагрузка, без выхода на предел.' },
+    red:    { title: 'Красный день',  short: 'лучше восстановление или отдых',
+              text: 'Лучше восстановление или отдых: мобильность, прогулка, сон.' }
+  };
+  const r = map[level];
+  return { level, pct, title: r.title, short: r.short, text: [r.text].concat(extra).join(' ') };
+}
+
+function recoHTML() {
+  const r = getReco();
+  if (!r) return `
+    <div class="wk-reco">
+      <div class="wk-reco-title">Сначала опросник</div>
+      <div class="wk-reco-text">Заполни утренний опросник, и я подскажу, какую нагрузку выбрать сегодня.</div>
+      <button class="btn-go" style="width:100%" onclick="goTab('check')">Заполнить</button>
+    </div>`;
+  return `
+    <div class="wk-reco wk-${r.level}">
+      <div class="wk-reco-title">${r.title} · ${r.pct}%</div>
+      <div class="wk-reco-text">${esc(r.text)}</div>
+    </div>`;
+}
+
+// Данные пульса: из живой записи Polar (если есть), иначе из копии в тренировке
+function hrFromPolar(p) {
+  const z = [0,0,0,0,0,0], zl = [0,0,0,0,0,0], zu = [0,0,0,0,0,0];
+  (p.zones || []).forEach(o => { const i = o.index; if (i >= 0 && i <= 5) { z[i] = o.seconds || 0; zl[i] = o.lower || 0; zu[i] = o.upper || 0; } });
+  return { avg: p.hr_avg || 0, max: p.hr_max || 0, cal: p.calories || 0, load: p.training_load || 0, z, zl, zu };
+}
+function hrOf(w) {
+  if (w.polarId) { const p = getPolar().find(x => x.id === w.polarId); if (p) return hrFromPolar(p); }
+  return w.hr && w.hr.avg ? w.hr : null;
+}
+const HZ_COLORS = ['#6b7280', '#5aa9ff', '#3dff8c', '#ffd24a', '#ff9a3d', '#ff5a5a'];
+function fmtSec(s) { return Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0'); }
+function hrHTML(h) {
+  if (!h) return '';
+  const bits = [`♥ ${h.avg} ср. / ${h.max} макс.`];
+  if (h.cal) bits.push(`🔥 ${h.cal} ккал`);
+  if (h.load) bits.push(`нагрузка Polar ${Math.round(h.load * 10) / 10}`);
+  let out = `<div class="wk-meta">${bits.join(' · ')}</div>`;
+  const z = h.z || [], tot = z.reduce((a, b) => a + (b || 0), 0);
+  if (tot > 0) {
+    out += `<div class="hz-bar">` + z.map((sec, i) => sec > 0 ? `<span style="flex:${sec};background:${HZ_COLORS[i]}"></span>` : '').join('') + `</div>`;
+    out += `<div class="hz-leg">` + z.map((sec, i) => sec > 0
+      ? `<span><i style="background:${HZ_COLORS[i]}"></i>${i === 0 ? 'ниже Z1' : 'Z' + i} ${fmtSec(sec)}${h.zu && h.zu[i] ? ' (' + (h.zl[i]) + '–' + h.zu[i] + ')' : ''}</span>` : '').join('') + `</div>`;
+  }
+  return out;
+}
+
+function wkItemHTML(w, withDate, canDel) {
+  const t = WK_TYPES[w.type] || WK_TYPES.other;
+  const dt = new Date(w.ts);
+  const when = withDate
+    ? dt.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
+    : dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const meta = w.type === 'rest' ? 'выходной день'
+    : `${w.dur} мин · тяжесть ${w.rpe}/10`
+      + (w.q ? ` · работа ${w.q}/5` : '') + (w.after ? ` · после ${w.after}/5` : '');
+  return `
+    <div class="wk-item${canDel ? '' : ' compact'}">
+      <div class="wk-emoji">${t.e}</div>
+      <div class="wk-body">
+        <div class="wk-title">${t.l}<span class="wk-when">${when}</span></div>
+        <div class="wk-meta">${meta}</div>
+        ${w.type !== 'rest' ? hrHTML(hrOf(w)) : ''}
+        ${(w.ex || []).map(e => `<div class="wk-ex-line">• ${esc(e.n)}${e.s || e.r ? ' — ' + (e.s || '?') + '×' + (e.r || '?') : ''}${e.kg !== undefined ? ' · ' + e.kg + ' кг' : ''}</div>`).join('')}
+        ${w.notes ? `<div class="wk-note">${esc(w.notes)}</div>` : ''}
+      </div>
+      ${canDel ? `<button class="wk-del wk-edit" title="Изменить" onclick="editWorkout('${esc(w.id)}')">✎</button>` : ''}
+      ${canDel ? `<button class="wk-del" onclick="delWorkout('${esc(w.id)}',this)">✕</button>` : ''}
+    </div>`;
+}
+
+function renderPlan() {
+  document.getElementById('plan-date-sub').textContent = ruDate();
+  document.getElementById('wk-reco').innerHTML = '';
+  const all = getWorkouts().slice().sort((a, b) => b.ts - a.ts);
+  const today = localDay(Date.now());
+  const todayW = all.filter(w => localDay(w.ts) === today);
+  const recent = all.filter(w => localDay(w.ts) !== today).slice(0, 20);
+  document.getElementById('wk-today').innerHTML = todayW.length
+    ? `<div class="card-label" style="margin-top:8px">Сегодня записано</div>` + todayW.map(w => wkItemHTML(w, false, true)).join('')
+    : '';
+  const wbox = document.getElementById('ai-wk-note');
+  if (wbox) {
+    const tw = todayW.filter(x => x.type !== 'rest');
+    let saved = null;
+    if (tw.length) { try { saved = JSON.parse(localStorage.getItem('gt_ai_wk_' + tw[tw.length - 1].id) || 'null'); } catch {} }
+    wbox.innerHTML = tw.length ? (saved ? wkNoteCardHTML(saved) : `<button class="btn-home ai-wk-btn" style="margin-bottom:12px;margin-top:0" onclick="aiWorkoutNote()">🤖 Комментарий ИИ к сегодняшней тренировке</button>`) : '';
+  }
+  document.getElementById('wk-recent').innerHTML = recent.length
+    ? `<div class="card-label" style="margin-top:8px">Последние тренировки</div>` + recent.map(w => wkItemHTML(w, true, true)).join('')
+    : '';
+  renderPolarCard();
+}
+
+// Сессии с пульсометра, которые ещё не записаны как тренировка
+const POLAR_SPORT = { ICE_HOCKEY:'ice', RUNNING:'cardio', CYCLING:'cardio', WALKING:'cardio', STRENGTH_TRAINING:'gym', GYM_TRAINING:'gym' };
+function renderPolarCard() {
+  const el = document.getElementById('wk-polar');
+  if (!el) return;
+  const used = new Set(getWorkouts().map(w => w.polarId).filter(Boolean));
+  const list = getPolar().filter(p => !used.has(p.id) && Date.now() - p.ts < 14 * 86400000).slice(0, 5);
+  el.innerHTML = list.length
+    ? `<div class="card"><div class="card-label">⌚ С пульсометра — дополни тренировку</div>` + list.map(p => {
+        const d = new Date(p.ts);
+        const when = d.toLocaleDateString('ru-RU', { weekday:'short', day:'numeric', month:'short' }) + ', '
+          + d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+        const min = Math.max(1, Math.round((p.duration || 0) / 60));
+        return `<div class="wk-item compact">
+          <div class="wk-emoji">⌚</div>
+          <div class="wk-body">
+            <div class="wk-title">${esc(when)}</div>
+            <div class="wk-meta">${min} мин · пульс ${p.hr_avg || '—'} ср. / ${p.hr_max || '—'} макс.${p.calories ? ' · ' + p.calories + ' ккал' : ''}</div>
+          </div>
+          <button class="wk-del" style="color:var(--accent,#3dff8c)" onclick="polarPick('${esc(p.id)}')">Дополнить</button>
+        </div>`;
+      }).join('') + `</div>`
+    : `<div class="card"><div class="card-label">⌚ С пульсометра</div><div class="wk-empty">Новых тренировок нет. Они появляются здесь в течение получаса после загрузки в Polar Flow.</div></div>`;
+}
+function polarPick(id) {
+  const p = getPolar().find(x => x.id === id);
+  if (!p) return;
+  const t = POLAR_SPORT[p.detailed_sport_info] || 'other';
+  const btn = document.querySelector(`#wk-types .zone-btn[onclick*="'${t}'"]`);
+  if (btn) wkType(t, btn);
+  S.wk.polar = p;
+  wkDur(Math.max(1, Math.round((p.duration || 0) / 60)));
+  document.getElementById('wk-form-title').textContent = 'Дополни тренировку · ' + new Date(p.ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ', пульс ' + (p.hr_avg || '—');
+  showWkForm(true);
+  showToast('Осталось указать тяжесть 1–10');
+}
+
+function wkType(t, btn) {
+  S.wk.type = t;
+  document.querySelectorAll('#wk-types .zone-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('wk-detail').style.display = t === 'rest' ? 'none' : 'block';
+  wkCheck();
+}
+function wkDur(v) {
+  document.getElementById('wk-dur').value = v;
+  wkCheck();
+}
+function wkRpe(v, btn) {
+  S.wk.rpe = v;
+  document.querySelectorAll('#wk-rpe .rpe-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  wkCheck();
+}
+function wkQ(v, btn) {
+  S.wk.q = v;
+  document.querySelectorAll('#wk-q .rpe-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function wkA(v, btn) {
+  S.wk.after = v;
+  document.querySelectorAll('#wk-a .rpe-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function wkCheck() {
+  const dur = parseInt(document.getElementById('wk-dur').value, 10) || 0;
+  const ok = S.wk.type && (S.wk.type === 'rest' || (dur > 0 && S.wk.rpe > 0));
+  document.getElementById('wk-save').disabled = !ok;
+  document.querySelectorAll('#wk-detail .wk-chip').forEach(c => c.classList.toggle('selected', +c.dataset.v === dur));
+}
+function showWkForm(on) {
+  document.getElementById('wk-form').style.display = on ? 'block' : 'none';
+  const m = document.getElementById('wk-manual'); if (m) m.style.display = on ? 'none' : 'block';
+  if (on) document.getElementById('wk-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function resetWkForm() {
+  S.wk = { type: null, rpe: 0, q: 0, after: 0 };
+  document.querySelectorAll('#wk-form .selected').forEach(b => b.classList.remove('selected'));
+  document.getElementById('wk-dur').value = '';
+  document.getElementById('wk-notes').value = '';
+  document.getElementById('wk-detail').style.display = 'none';
+  document.getElementById('wk-save').disabled = true;
+  document.getElementById('wk-save').textContent = 'Сохранить';
+  document.getElementById('wk-cancel').hidden = true;
+  renderEx();
+  document.getElementById('wk-form-title').textContent = 'Тренировка без пульсометра';
+  showWkForm(false);
+}
+
+// ── Упражнения ──
+const EX_DEFAULT = ['Присед','Фронтальный присед','Румынская тяга','Становая тяга','Жим лёжа','Жим стоя','Тяга в наклоне','Тяга верхнего блока','Подтягивания','Отжимания','Выпады','Болгарский сплит-присед','Ягодичный мост','Подъём на носки','Взрывные прыжки','Планка'];
+function exNames() {
+  const set = new Set(EX_DEFAULT);
+  getWorkouts().forEach(w => (w.ex || []).forEach(e => e.n && set.add(e.n)));
+  return [...set];
+}
+function exLast(name) {
+  const arr = getWorkouts().slice().sort((a, b) => b.ts - a.ts);
+  for (const w of arr) for (const e of (w.ex || [])) if (e.n && e.n.toLowerCase() === name.toLowerCase()) return e;
+  return null;
+}
+function renderEx() {
+  const el = document.getElementById('wk-ex');
+  if (!el) return;
+  const list = S.wk.ex || [];
+  document.getElementById('ex-names').innerHTML = exNames().map(n => `<option value="${esc(n)}">`).join('');
+  el.innerHTML = list.map((e, i) => `
+    <div class="ex-row">
+      <div class="ex-top">
+        <input list="ex-names" placeholder="Название упражнения" value="${esc(e.n || '')}" onchange="exName(${i},this.value)">
+        <button class="ex-x" onclick="exDel(${i})">✕</button>
+      </div>
+      <div class="ex-nums">
+        <div><label>Подходы</label><input inputmode="numeric" value="${e.s || ''}" oninput="exSet(${i},'s',this.value)"></div>
+        <div><label>Повторы</label><input inputmode="numeric" value="${e.r || ''}" oninput="exSet(${i},'r',this.value)"></div>
+        <div><label>Вес, кг</label><input inputmode="decimal" value="${e.kg === undefined ? '' : e.kg}" oninput="exSet(${i},'kg',this.value)"></div>
+      </div>
+    </div>`).join('');
+}
+function exAdd() { (S.wk.ex = S.wk.ex || []).push({ n:'', s:'', r:'', kg:'' }); renderEx(); }
+function exDel(i) { S.wk.ex.splice(i, 1); renderEx(); }
+function exSet(i, k, v) { S.wk.ex[i][k] = v.replace(',', '.'); }
+function exName(i, v) {
+  const e = S.wk.ex[i];
+  e.n = v.trim();
+  const last = e.n && !e.s && !e.r && !e.kg ? exLast(e.n) : null;   // подставляем как в прошлый раз
+  if (last) { e.s = last.s; e.r = last.r; e.kg = last.kg; }
+  renderEx();
+}
+function cleanEx() {
+  return (S.wk.ex || []).filter(e => e.n && e.n.trim()).map(e => {
+    const o = { n: e.n.trim() };
+    const s = parseInt(e.s, 10), r = parseInt(e.r, 10), kg = parseFloat(e.kg);
+    if (s > 0) o.s = s;
+    if (r > 0) o.r = r;
+    if (kg >= 0) o.kg = kg;
+    return o;
+  });
+}
+
+// Редактирование: подгружаем тренировку в форму, сохранение перезапишет её
+function editWorkout(id) {
+  const w = getWorkouts().find(x => x.id === id);
+  if (!w) return;
+  resetWkForm();
+  showWkForm(true);
+  S.wk.editId = id;
+  const btn = document.querySelector(`#wk-types .zone-btn[onclick*="'${w.type}'"]`);
+  if (btn) wkType(w.type, btn);
+  if (w.type !== 'rest') {
+    wkDur(w.dur || 0);
+    const pick = (sel, v, key) => {
+      const b = document.querySelectorAll(`${sel} .rpe-btn`)[v - 1];
+      if (b && v > 0) { S.wk[key] = v; b.classList.add('selected'); }
+    };
+    pick('#wk-rpe', w.rpe, 'rpe'); pick('#wk-q', w.q || 0, 'q'); pick('#wk-a', w.after || 0, 'after');
+  }
+  S.wk.ex = (w.ex || []).map(e => ({ n:e.n, s:e.s || '', r:e.r || '', kg: e.kg === undefined ? '' : e.kg }));
+  renderEx();
+  document.getElementById('wk-notes').value = w.notes || '';
+  document.getElementById('wk-save').textContent = 'Сохранить изменения';
+  document.getElementById('wk-cancel').hidden = false;
+  document.getElementById('wk-form-title').textContent = 'Изменить тренировку · ' +
+    new Date(w.ts).toLocaleDateString('ru-RU', { day:'numeric', month:'short' });
+  wkCheck();
+  document.getElementById('wk-form').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+async function saveWorkout() {
+  const rest = S.wk.type === 'rest';
+  const dur = parseInt(document.getElementById('wk-dur').value, 10) || 0;
+  if (!S.wk.type || (!rest && (dur <= 0 || S.wk.rpe <= 0))) return;
+  if (S.wk.editId) {
+    const arr = getWorkouts();
+    const i = arr.findIndex(x => x.id === S.wk.editId);
+    if (i >= 0) {
+      const o = arr[i];
+      const w = { id: o.id, ts: o.ts, type: S.wk.type, dur: rest ? 0 : dur, rpe: rest ? 0 : S.wk.rpe,
+                  notes: document.getElementById('wk-notes').value.trim() };
+      if (!rest && S.wk.q > 0) w.q = S.wk.q;
+      if (!rest && S.wk.after > 0) w.after = S.wk.after;
+      if (!rest) { const ex = cleanEx(); if (ex.length) w.ex = ex; }
+      if (o.polarId) { w.polarId = o.polarId; w.hr = o.hr; }
+      w.mt = Date.now();
+      const prs = w.ex ? prCheck(w.ex, w.id) : [];
+      arr[i] = w; setWorkouts(arr);
+      resetWkForm(); renderPlan();
+      const ok = await fbSaveWorkout(w);
+      showToast(cloudMsg(ok, 'Изменения сохранены ✓') + (prs.length ? ' · ' + prs.join(', ') : ''));
+      return;
+    }
+  }
+  const w = {
+    id: String(Date.now()),
+    ts: Date.now(),
+    type: S.wk.type,
+    dur: rest ? 0 : dur,
+    rpe: rest ? 0 : S.wk.rpe,
+    notes: document.getElementById('wk-notes').value.trim()
+  };
+  const pp = S.wk.polar;
+  if (pp && !rest) {
+    w.ts = pp.ts; w.polarId = pp.id;
+    w.hr = hrFromPolar(pp);
+  }
+  if (!rest && S.wk.q > 0) w.q = S.wk.q;
+  if (!rest && S.wk.after > 0) w.after = S.wk.after;
+  if (!rest) { const ex = cleanEx(); if (ex.length) w.ex = ex; }
+  const prs = w.ex ? prCheck(w.ex, w.id) : [];
+  const arr = getWorkouts(); arr.push(w); setWorkouts(arr);
+  resetWkForm();
+  renderPlan();
+  const ok = await fbSaveWorkout(w);
+  showToast(cloudMsg(ok, 'Тренировка сохранена ✓') + (prs.length ? ' · ' + prs.join(', ') : ''));
+}
+
+// Отдых одним нажатием с главной
+async function quickRest() {
+  const w = { id: String(Date.now()), ts: Date.now(), type: 'rest', dur: 0, rpe: 0, notes: '' };
+  const arr = getWorkouts(); arr.push(w); setWorkouts(arr);
+  renderHome();
+  const ok = await fbSaveWorkout(w);
+  showToast(cloudMsg(ok, 'Отдых записан ✓'));
+}
+
+let _delArm = null;
+async function delWorkout(id, btn) {
+  if (_delArm !== id) {          // первое нажатие — просим подтвердить
+    _delArm = id;
+    btn.textContent = 'Удалить?';
+    btn.classList.add('armed');
+    setTimeout(() => {
+      if (_delArm === id) { _delArm = null; btn.textContent = '✕'; btn.classList.remove('armed'); }
+    }, 3000);
+    return;
+  }
+  _delArm = null;
+  const ok = await fbDeleteWorkout(id);
+  if (!ok) { showToast(navigator.onLine ? '⚠ Не удалось удалить' : '📴 Удалять можно, когда есть сеть'); return; }
+  setWorkouts(getWorkouts().filter(w => w.id !== id));
+  renderPlan();
+  showToast('Удалено');
+}
+
+// ── ANALYTICS ──────────────────────────────────────
+// Календарь дней: опросник + тренировки по локальной дате, без пропусков в датах
+function buildDays() {
+  const map = {};
+  const slot = k => (map[k] = map[k] || {});
+  getEntries().forEach(e => { slot(localDay(e.ts)).e = e; });
+  getWorkouts().forEach(w => { const s = slot(localDay(w.ts)); (s.w = s.w || []).push(w); });
+  const keys = Object.keys(map).sort();
+  if (!keys.length) return [];
+  const [y, m, d] = keys[0].split('-').map(Number);
+  const todayK = localDay(Date.now());
+  const days = [];
+  for (let t = new Date(y, m - 1, d); localDay(t) <= todayK; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1)) {
+    const k = localDay(t), s = map[k] || {};
+    days.push({ k, dow: (t.getDay() + 6) % 7, date: new Date(t), e: s.e, w: s.w });
+  }
+  return days;
+}
+
+const pctOf = e => Math.round((e.sleep + e.energy + e.mood + e.ready) / 4 / 5 * 100);
+const isTracked = d => !!(d.e || d.w);
+const hasTrain = d => (d.w || []).some(w => w.type !== 'rest');
+const loadOf = d => (d.w || []).reduce((s, w) => s + (w.type === 'rest' ? 0 : (w.dur || 0) * (w.rpe || 0)), 0);
+const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const levelColor = p => p >= 70 ? 'var(--accent)' : p >= 40 ? 'var(--warn)' : 'var(--bad)';
+
+// Метрики дня i (D — массив дней). null — данных нет.
+const MET = {
+  sleep:   (D, i) => D[i].e ? D[i].e.sleep : null,
+  sleepH:  (D, i) => (D[i].e && D[i].e.sleepH > 0) ? D[i].e.sleepH : null,
+  sleepS:  (D, i) => (D[i].e && D[i].e.sleepScore > 0) ? D[i].e.sleepScore : null,
+  sleepHR: (D, i) => (D[i].e && D[i].e.sleepHR > 0) ? D[i].e.sleepHR : null,
+  energy:  (D, i) => D[i].e ? D[i].e.energy : null,
+  mood:    (D, i) => D[i].e ? D[i].e.mood : null,
+  ready:   (D, i) => D[i].e ? D[i].e.ready : null,
+  pct:     (D, i) => D[i].e ? pctOf(D[i].e) : null,
+  load:    (D, i) => isTracked(D[i]) ? loadOf(D[i]) : null,
+  load3:   (D, i) => {
+    if (i < 3) return null;
+    let s = 0, any = false;
+    for (let j = i - 3; j < i; j++) if (isTracked(D[j])) { any = true; s += loadOf(D[j]); }
+    return any ? s : null;
+  },
+  rpe:     (D, i) => { const a = (D[i].w || []).filter(w => w.type !== 'rest').map(w => w.rpe); return a.length ? Math.max(...a) : null; },
+  quality: (D, i) => avgOf((D[i].w || []).filter(w => w.q > 0).map(w => w.q)),
+  after:   (D, i) => avgOf((D[i].w || []).filter(w => w.after > 0).map(w => w.after))
+};
+
+// Пары для поиска связей. lag: значение a берём за lag дней до значения b.
+const COR_SPECS = [
+  { a:'sleep',  b:'energy',  lag:0, name:'Сон → энергия утром',
+    pos:'Чем лучше сон, тем больше энергии утром.', neg:'Лучший сон почему-то идёт с меньшей энергией.' },
+  { a:'sleep',  b:'ready',   lag:0, name:'Сон → готовность',
+    pos:'После хорошего сна ты чувствуешь себя готовее.', neg:'После хорошего сна готовность ниже, это стоит перепроверить.' },
+  { a:'mood',   b:'ready',   lag:0, name:'Настроение → готовность',
+    pos:'Чем лучше настроение, тем выше готовность.', neg:'При хорошем настроении готовность ниже.' },
+  { a:'load',   b:'ready',   lag:1, name:'Нагрузка вчера → готовность',
+    pos:'После нагруженных дней готовность выше.', neg:'После нагруженных дней готовность ниже.' },
+  { a:'load',   b:'energy',  lag:1, name:'Нагрузка вчера → энергия',
+    pos:'После нагруженных дней энергии больше.', neg:'После нагруженных дней энергии меньше.' },
+  { a:'load',   b:'sleep',   lag:1, name:'Нагрузка вчера → сон',
+    pos:'После тяжёлых дней сон лучше.', neg:'После тяжёлых дней сон хуже.' },
+  { a:'load3',  b:'pct',     lag:0, name:'Нагрузка за 3 дня → готовность',
+    pos:'После нагруженных трёх дней общая готовность выше.', neg:'Нагрузка за 3 дня снижает общую готовность.' },
+  { a:'pct',    b:'load',    lag:0, name:'Готовность → объём нагрузки в тот же день',
+    pos:'Ты тренируешься больше, когда готовность выше: решение по самочувствию работает.', neg:'Ты тренируешься больше, когда готовность ниже.' },
+  { a:'ready',  b:'rpe',     lag:0, name:'Готовность → тяжесть тренировки',
+    pos:'При высокой готовности тренировки кажутся тяжелее.', neg:'При высокой готовности тренировки кажутся легче.' },
+  { a:'sleepH', b:'ready',   lag:0, name:'Часы сна → готовность',
+    pos:'Чем дольше сон, тем выше готовность.', neg:'При более долгом сне готовность ниже.' },
+  { a:'sleepH', b:'energy',  lag:0, name:'Часы сна → энергия утром',
+    pos:'Чем дольше сон, тем больше энергии утром.', neg:'При более долгом сне энергии меньше.' },
+  { a:'load',   b:'sleepH',  lag:1, name:'Нагрузка вчера → часы сна',
+    pos:'После тяжёлых дней ты спишь дольше.', neg:'После тяжёлых дней ты спишь меньше.' },
+  { a:'sleepH', b:'quality', lag:0, name:'Часы сна → качество работы',
+    pos:'После долгого сна работа получается лучше.', neg:'После долгого сна работа получается хуже.' },
+  { a:'sleepS', b:'ready',   lag:0, name:'Оценка сна часов → готовность',
+    pos:'Чем выше оценка сна по часам, тем выше готовность.', neg:'При высокой оценке часов готовность ниже. Часы и самочувствие расходятся.' },
+  { a:'sleepS', b:'energy',  lag:0, name:'Оценка сна часов → энергия утром',
+    pos:'Чем выше оценка часов, тем больше энергии утром.', neg:'При высокой оценке часов энергии меньше.' },
+  { a:'sleep',  b:'sleepS',  lag:0, name:'Твоя оценка сна ↔ оценка часов',
+    pos:'Твоя оценка сна и оценка часов совпадают: часам можно доверять.', neg:'Твоя оценка и оценка часов расходятся.' },
+  { a:'load',   b:'sleepS',  lag:1, name:'Нагрузка вчера → оценка сна часов',
+    pos:'После тяжёлых дней оценка сна по часам выше.', neg:'После тяжёлых дней оценка сна по часам ниже.' },
+  { a:'load',   b:'sleepHR', lag:1, name:'Нагрузка вчера → пульс за ночь',
+    pos:'После тяжёлых дней пульс ночью выше: организм ещё восстанавливается.', neg:'После тяжёлых дней пульс ночью ниже.' },
+  { a:'sleepHR', b:'ready',  lag:0, name:'Пульс за ночь → готовность',
+    pos:'При более высоком пульсе за ночь готовность выше.', neg:'Чем выше пульс за ночь, тем ниже готовность. Это может быть признаком усталости.' },
+  { a:'sleep',  b:'quality', lag:0, name:'Сон → качество работы',
+    pos:'После хорошего сна работа получается лучше.', neg:'После хорошего сна работа получается хуже.' },
+  { a:'ready',  b:'quality', lag:0, name:'Готовность → качество работы',
+    pos:'При высокой готовности работа получается лучше.', neg:'При высокой готовности работа получается хуже.' },
+  { a:'load',   b:'after',   lag:0, name:'Нагрузка → самочувствие после',
+    pos:'Чем больше нагрузка, тем лучше самочувствие после.', neg:'Чем больше нагрузка, тем хуже самочувствие после.' },
+  { a:'after',  b:'ready',   lag:1, name:'Самочувствие после → готовность утром',
+    pos:'Хорошее самочувствие после тренировки даёт высокую готовность утром.', neg:'Хорошее самочувствие после тренировки идёт с низкой готовностью утром.' }
+];
+
+function corr(D, a, b, lag) {
+  const xs = [], ys = [];
+  for (let i = lag; i < D.length; i++) {
+    const x = MET[a](D, i - lag), y = MET[b](D, i);
+    if (x != null && y != null) { xs.push(x); ys.push(y); }
+  }
+  const n = xs.length;
+  if (n < 3) return { r: null, n };
+  const mx = avgOf(xs), my = avgOf(ys);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+  if (!sxx || !syy) return { r: null, n };
+  return { r: sxy / Math.sqrt(sxx * syy), n };
+}
+function strengthWord(r) {
+  const a = Math.abs(r);
+  return a < 0.2 ? 'связи почти нет' : a < 0.4 ? 'слабая связь' : a < 0.6 ? 'умеренная связь' : 'сильная связь';
+}
+
+function corrRowHTML(spec, c) {
+  if (c.r == null || c.n < 10) {
+    return `<div class="cor-row dim"><div class="cor-top"><span>${spec.name}</span><span class="cor-n">мало данных (${c.n}/10)</span></div></div>`;
+  }
+  const r = c.r, w = Math.abs(r) * 50;
+  const left = r >= 0 ? 50 : 50 - w;
+  const col = r >= 0 ? 'var(--accent)' : 'var(--warn)';
+  const txt = Math.abs(r) < 0.2 ? strengthWord(r) : strengthWord(r) + (r >= 0 ? ', прямая' : ', обратная');
+  const aiBtn = (Math.abs(r) >= 0.35 && c.n >= 14) ? `<button class="card-link" style="margin-top:2px" onclick="aiExplainCor('${spec.a}','${spec.b}',${spec.lag})">🤖 объяснить через ИИ</button>` : '';
+  return `<div class="cor-row">
+    <div class="cor-top"><span>${spec.name}</span><span class="cor-n">r = ${r.toFixed(2)} · ${c.n} дн.</span></div>
+    <div class="cor-bar"><b></b><i style="left:${left}%;width:${w}%;background:${col}"></i></div>
+    <div class="cor-txt">${txt}${c.n < 14 ? ' · предварительно' : ''}</div>
+    ${aiBtn}
+  </div>`;
+}
+
+// Сравнение средних по группам. keyFn → название группы или null; valFn → число или null.
+function groupMeans(D, keyFn, valFn) {
+  const g = {};
+  for (let i = 0; i < D.length; i++) {
+    const k = keyFn(D, i), v = valFn(D, i);
+    if (k == null || v == null) continue;
+    (g[k] = g[k] || []).push(v);
+  }
+  return g;
+}
+function groupHTML(title, g, order, unit) {
+  const rows = order.filter(k => g[k] && g[k].length >= 2).map(k => ({ k, v: avgOf(g[k]), n: g[k].length }));
+  if (rows.length < 2) return '';
+  return `<div class="st-sub">${title}</div>` + rows.map(r =>
+    `<div class="grp"><div class="nm">${r.k}</div><div class="bar"><i style="width:${Math.min(100, r.v)}%"></i></div><div class="val">${Math.round(r.v)}${unit} <small>(${r.n})</small></div></div>`).join('');
+}
+
+function barsSVG(items, o) {
+  const H = o.h || 80, W = 300, n = items.length, gap = 3;
+  const bw = (W - gap * (n - 1)) / n;
+  const max = o.max || Math.max(1, ...items.map(i => i.v || 0));
+  let s = `<svg viewBox="0 0 ${W} ${H + 16}" width="100%" style="display:block">`;
+  items.forEach((it, i) => {
+    const x = i * (bw + gap);
+    if (it.v == null) s += `<rect x="${x}" y="${H - 2}" width="${bw}" height="2" rx="1" style="fill:var(--s3)"/>`;
+    else { const h = Math.max(2, it.v / max * H); s += `<rect x="${x}" y="${H - h}" width="${bw}" height="${h}" rx="2" style="fill:${it.c}"/>`; }
+    if (it.t) s += `<text x="${x + bw / 2}" y="${H + 12}" text-anchor="middle" font-size="9" style="fill:var(--fg3)">${it.t}</text>`;
+  });
+  return s + '</svg>';
+}
+
+// ── Прогресс по упражнениям ──
+function exHistory(name) {
+  const key = name.toLowerCase();
+  return getWorkouts().slice().sort((a, b) => a.ts - b.ts).map(w => {
+    const rows = (w.ex || []).filter(e => e.n && e.n.toLowerCase() === key);
+    if (!rows.length) return null;
+    let top = -1, topR = 0, vol = 0, reps = 0, maxR = 0;
+    rows.forEach(e => {
+      const s = e.s || 1, r = e.r || 0, kg = e.kg;
+      if (kg !== undefined && kg > 0) { if (kg > top || (kg === top && r > topR)) { top = kg; topR = r; } vol += s * r * kg; }
+      reps += s * r; if (r > maxR) maxR = r;
+    });
+    return { ts: w.ts, top: top > 0 ? top : null, topR, vol, reps, maxR, rows };
+  }).filter(Boolean);
+}
+function prCheck(exList, excludeId) {
+  const out = [];
+  const others = getWorkouts().filter(w => w.id !== excludeId);
+  const seen = {};
+  exList.forEach(e => {
+    const key = e.n.toLowerCase();
+    if (seen[key]) return; seen[key] = 1;
+    const prev = []; others.forEach(w => (w.ex || []).forEach(x => { if (x.n && x.n.toLowerCase() === key) prev.push(x); }));
+    if (!prev.length) return;
+    const mine = exList.filter(x => x.n.toLowerCase() === key);
+    const prevKg = Math.max(0, ...prev.map(x => x.kg || 0));
+    const myKg = Math.max(0, ...mine.map(x => x.kg || 0));
+    if (myKg > 0 && prevKg > 0) { if (myKg > prevKg) out.push('🏆 ' + e.n + ' ' + myKg + ' кг'); return; }
+    const prevR = Math.max(0, ...prev.map(x => x.r || 0)), myR = Math.max(0, ...mine.map(x => x.r || 0));
+    if (myKg === 0 && prevKg === 0 && myR > prevR) out.push('🏆 ' + e.n + ' ' + myR + ' повт.');
+  });
+  return out;
+}
+function exSelect(v) { S.exSel = v; renderExProgress(); }
+function renderExProgress() {
+  const el = document.getElementById('ex-progress');
+  if (!el) return;
+  const names = {};
+  getWorkouts().forEach(w => (w.ex || []).forEach(e => { if (e.n) { const k = e.n.toLowerCase(); if (!names[k] || names[k].ts < w.ts) names[k] = { n: e.n, ts: w.ts }; } }));
+  const list = Object.values(names).sort((a, b) => b.ts - a.ts);
+  if (!list.length) { el.innerHTML = ''; return; }
+  const sel = (S.exSel && names[S.exSel.toLowerCase()]) ? names[S.exSel.toLowerCase()].n : list[0].n;
+  const H = exHistory(sel);
+  const weighted = H.some(h => h.top);
+  const vals = H.map(h => weighted ? (h.top || 0) : h.maxR);
+  const best = Math.max(...vals), bestIdx = vals.lastIndexOf(best);
+  const fmtD = ts => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  let e1 = 0;
+  if (weighted) H.forEach(h => { if (h.top && h.topR > 0) e1 = Math.max(e1, h.top * (1 + h.topR / 30)); });
+  const unit = weighted ? 'кг' : 'повт.';
+  const kpis = [
+    [best + ' ' + unit, weighted ? 'рекорд веса' : 'рекорд повторов'],
+    [weighted && e1 ? Math.round(e1) + ' кг' : String(H.length), weighted && e1 ? 'расч. максимум (1ПМ)' : 'тренировок'],
+    [String(H.length), 'раз делал']
+  ];
+  // график последних 20 тренировок
+  const pts = vals.slice(-20), n = pts.length, W = 320, Hh = 110, pad = 14;
+  const lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1;
+  const X = i => n === 1 ? W / 2 : pad + i * (W - 2 * pad) / (n - 1);
+  const Y = v => Hh - pad - (v - lo) / span * (Hh - 2 * pad);
+  const off = vals.length - n;
+  const line = pts.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+  const svg = `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:auto;display:block">
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((v, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i + off === bestIdx ? 5 : 3}" fill="${i + off === bestIdx ? 'var(--warn)' : 'var(--accent)'}"/>`).join('')}
+    <text x="${pad}" y="${Hh - 1}" font-size="10" fill="var(--fg3)">${fmtD(H[off].ts)}</text>
+    <text x="${W - pad}" y="${Hh - 1}" font-size="10" fill="var(--fg3)" text-anchor="end">${fmtD(H[H.length - 1].ts)}</text>
+  </svg>`;
+  const last = H.slice(-5).reverse().map(h => `<div class="ep-row"><span>${fmtD(h.ts)}</span><span>${h.rows.map(r => (r.s || '?') + '×' + (r.r || '?') + (r.kg !== undefined ? '×' + r.kg + ' кг' : '')).join(', ')}</span></div>`).join('');
+  el.innerHTML = `<div class="card" style="margin-top:14px">
+    <div class="card-label">Прогресс по упражнениям</div>
+    <select class="wk-input" onchange="exSelect(this.value)">${list.map(x => `<option value="${esc(x.n)}"${x.n === sel ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}</select>
+    <div class="ep-kpis">${kpis.map(k => `<div class="ep-k"><div class="v">${k[0]}</div><div class="l">${k[1]}</div></div>`).join('')}</div>
+    ${H.length > 1 ? svg + `<div style="font-size:11px;color:var(--fg3);margin:2px 0 8px">${weighted ? 'Рабочий вес по тренировкам' : 'Макс. повторов за подход'}, жёлтая точка — рекорд</div>` : '<div style="font-size:12px;color:var(--fg3);margin:6px 0">График появится после второй тренировки с этим упражнением.</div>'}
+    <div class="card-label" style="margin-top:8px">Последние разы</div>${last}
+  </div>`;
+}
+
+function renderStats() {
+  renderExProgress();
+  const D = buildDays();
+  const wbox = document.getElementById('ai-weekly');
+  if (wbox) { const w = aiGetWeekly(); wbox.innerHTML = w ? weeklyCardHTML(w) : ''; }
+  const el = document.getElementById('stats-body');
+  const nEntries = getEntries().length, nWork = getWorkouts().filter(w => w.type !== 'rest').length;
+  if (!D.length) {
+    el.innerHTML = '<div class="hist-empty">📊 Пока нет данных. Заполни опросник и запиши тренировку.</div>';
+    return;
+  }
+  const last = D.length - 1;
+  const sumLoad = (a, b) => { let s = 0; for (let i = Math.max(0, a); i <= b; i++) s += loadOf(D[i]); return s; };
+
+  // Нагрузка за 7 дней и сравнение с обычным уровнем
+  const acute = sumLoad(last - 6, last);
+  const prior = [];
+  for (let k = 1; k <= 4; k++) { const a = last - 6 - 7 * k; if (a >= 0) prior.push(sumLoad(a, a + 6)); }
+  const chronic = prior.length >= 2 ? avgOf(prior) : null;
+  let statusHTML = `<div class="st-status">Сравнение с обычным уровнем появится, когда накопится 3 недели данных.</div>`;
+  if (chronic && chronic > 0) {
+    const ratio = acute / chronic;
+    const cls = ratio > 1.5 ? 'high' : ratio > 1.3 ? 'mid' : ratio < 0.8 ? 'mid' : 'ok';
+    const word = ratio > 1.5 ? 'высокая, риск перегрузки' : ratio > 1.3 ? 'повышенная' : ratio < 0.8 ? 'ниже обычной' : 'в норме';
+    statusHTML = `<div class="st-status ${cls}">Нагрузка за 7 дней ${word}: ${ratio.toFixed(2)} от обычной.</div>`;
+  }
+  const week = D.slice(-7);
+  const sessions = week.reduce((s, d) => s + (d.w || []).filter(w => w.type !== 'rest').length, 0);
+  const restDays = week.filter(d => isTracked(d) && !hasTrain(d)).length;
+  const minutes = week.reduce((s, d) => s + (d.w || []).reduce((a, w) => a + (w.type === 'rest' ? 0 : (w.dur || 0)), 0), 0);
+  const rpes = week.flatMap(d => (d.w || []).filter(w => w.type !== 'rest').map(w => w.rpe));
+  const kpi = (v, l) => `<div class="st-kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+
+  // Недельная нагрузка (календарные недели, пн–вс), 8 недель
+  const todayDow = D[last].dow;
+  const weekItems = [];
+  for (let k = 7; k >= 0; k--) {
+    const end = last - todayDow - 7 * k + (k === 0 ? todayDow : 6);
+    const start = last - todayDow - 7 * k;
+    if (end < 0 && start < 0) { weekItems.push({ v: null, t: '' }); continue; }
+    const v = sumLoad(start, Math.min(end, last));
+    const d0 = D[Math.max(0, start)];
+    weekItems.push({ v: start + 6 < 0 ? null : v, c: 'var(--accent)', t: d0 ? String(d0.date.getDate()).padStart(2, '0') + '.' + String(d0.date.getMonth() + 1).padStart(2, '0') : '' });
+  }
+  // По дням, 14 дней
+  const dayItems = D.slice(-14).map(d => {
+    const r = MET.rpe([d], 0);
+    return { v: isTracked(d) ? loadOf(d) : null, c: r >= 8 ? 'var(--bad)' : r >= 6 ? 'var(--warn)' : 'var(--accent)', t: String(d.date.getDate()) };
+  });
+  // Готовность, 30 дней
+  const readyItems = D.slice(-30).map((d, i, arr) => {
+    const p = d.e ? pctOf(d.e) : null;
+    return { v: p, c: p == null ? '' : levelColor(p), t: (i % 5 === 0 || i === arr.length - 1) ? String(d.date.getDate()) : '' };
+  });
+
+  // Связи
+  const cors = COR_SPECS.map(s => ({ s, c: corr(D, s.a, s.b, s.lag) }));
+  const insights = cors.filter(x => x.c.r != null && x.c.n >= 14 && Math.abs(x.c.r) >= 0.35)
+    .sort((a, b) => Math.abs(b.c.r) - Math.abs(a.c.r)).slice(0, 5)
+    .map(x => `${x.c.r >= 0 ? x.s.pos : x.s.neg} <span class="cor-n">(${strengthWord(x.c.r)}, ${x.c.n} дн.)</span>`);
+
+  // Сравнения групп
+  const prevTracked = (D, i) => i > 0 && isTracked(D[i - 1]);
+  const gRest = groupMeans(D,
+    (D, i) => prevTracked(D, i) ? (hasTrain(D[i - 1]) ? 'После тренировки' : 'После отдыха') : null,
+    (D, i) => MET.pct(D, i));
+  const typeOf = d => { const ws = (d.w || []).filter(w => w.type !== 'rest'); if (!ws.length) return null;
+    ws.sort((a, b) => (b.dur * b.rpe) - (a.dur * a.rpe)); return (WK_TYPES[ws[0].type] || WK_TYPES.other).l; };
+  const gType = groupMeans(D, (D, i) => i > 0 ? typeOf(D[i - 1]) : null, (D, i) => MET.pct(D, i));
+  const streakAt = (D, i) => { let s = 0; for (let j = i - 1; j >= 0 && hasTrain(D[j]); j--) s++; return s; };
+  const gStreak = groupMeans(D,
+    (D, i) => { if (!prevTracked(D, i)) return null; const s = streakAt(D, i); return s === 0 ? 'Вчера отдых' : s <= 2 ? '1–2 дня подряд' : '3+ дней подряд'; },
+    (D, i) => MET.pct(D, i));
+  const gZones = groupMeans(D,
+    (D, i) => (prevTracked(D, i) && D[i].e) ? ((MET.rpe(D, i - 1) || 0) >= 8 ? 'После тяжёлого (8+)' : 'Обычный день') : null,
+    (D, i) => (D[i].e ? ((D[i].e.zones || []).filter(z => z !== 'none').length ? 100 : 0) : null));
+  const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const gDow = groupMeans(D, (D, i) => D[i].e ? DAYS[D[i].dow] : null, (D, i) => MET.pct(D, i));
+
+  const groups =
+    groupHTML('Готовность утром после отдыха и после тренировки', gRest, ['После отдыха', 'После тренировки'], '%') +
+    groupHTML('Готовность утром после тренировки типа', gType, Object.values(WK_TYPES).map(t => t.l), '%') +
+    groupHTML('Готовность утром после серии тренировок', gStreak, ['Вчера отдых', '1–2 дня подряд', '3+ дней подряд'], '%') +
+    groupHTML('Доля дней с дискомфортом в зонах', gZones, ['Обычный день', 'После тяжёлого (8+)'], '%') +
+    groupHTML('Готовность по дням недели', gDow, DAYS, '%');
+
+  el.innerHTML = `
+    <div class="st-note">Данных: ${nEntries} опросников, ${nWork} тренировок. Связи считаются с 10 дней, выводы с 14. Дни без записи о тренировке считаются днями без нагрузки.</div>
+
+    <div class="card">
+      <div class="card-label">Что заметно</div>
+      ${insights.length ? insights.map(t => `<div class="st-ins">${t}</div>`).join('')
+        : '<div class="wk-empty">Пока рано для выводов. Они появятся, когда накопится от 14 дней данных.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="card-label">Нагрузка</div>
+      ${statusHTML}
+      <div class="st-kpis">
+        ${kpi(sessions, 'тренировок за 7 дней')}
+        ${kpi(restDays, 'дней без тренировки')}
+        ${kpi(minutes, 'минут за 7 дней')}
+        ${kpi(rpes.length ? (avgOf(rpes)).toFixed(1) : '—', 'средняя тяжесть')}
+      </div>
+      <div class="st-sub">По неделям (минуты × тяжесть)</div>
+      ${barsSVG(weekItems, { h: 70 })}
+      <div class="st-sub">По дням, последние 14 (красный — тяжесть 8+)</div>
+      ${barsSVG(dayItems, { h: 70 })}
+    </div>
+
+    <div class="card">
+      <div class="card-label">Готовность, 30 дней</div>
+      ${barsSVG(readyItems, { h: 70, max: 100 })}
+    </div>
+
+    <div class="card">
+      <div class="card-label">Связи</div>
+      ${cors.map(x => corrRowHTML(x.s, x.c)).join('')}
+    </div>
+
+    ${groups ? `<div class="card"><div class="card-label">Сравнения</div>${groups}</div>` : ''}
+
+    <div class="st-note">Связь не означает причину: это подсказки для твоих решений. Чем больше дней записано, тем они надёжнее.</div>`;
+}
+
+// ── ОБЛАКО / ЭКСПОРТ / ИМПОРТ ─────────────────────
+const CLOUD = { lastStatus: '' };
+
+function setCloudStatus(t) {
+  CLOUD.lastStatus = t;
+  const el = document.getElementById('cloud-status');
+  if (el) el.textContent = t;
+}
+
+async function cloudCheck() {
+  try {
+    if (typeof firebase === 'undefined' || typeof db === 'undefined' || !db) { setCloudStatus('✗ Firebase не загрузился (сеть/CDN). Данные хранятся только в этом браузере.'); return; }
+    const u = firebase.auth().currentUser;
+    if (!u) { setCloudStatus('✗ Вход не выполнен — войди в аккаунт и проверь снова'); return; }
+    setCloudStatus('⏳ Проверяю облако…');
+    const cnt = async (col) => {
+      try { const s = await db.collection('users').doc(USER_ID).collection(col).get(); return s.size; }
+      catch (e) { return '✗ ' + (e.code || e.message); }
+    };
+    const ne = await cnt('entries');
+    const nw = await cnt('workouts');
+    const np = await cnt('polar');
+    if (String(ne).indexOf('✗') === 0) setCloudStatus('✗ Облако недоступно: ' + ne.slice(2));
+    else setCloudStatus('✓ Облако подключено · опросов: ' + ne + ' · тренировок: ' + nw + ' · сессий Polar: ' + np);
+  } catch (e) { setCloudStatus('✗ Ошибка: ' + (e.code || e.message)); }
+}
+
+function exportJSON() {
+  try {
+    const data = {
+      apex: 1,
+      exported: new Date().toISOString(),
+      entries: getEntries(),
+      workouts: getWorkouts(),
+      polar: getPolar(),
+      goal: localStorage.getItem('gt_goal') || ''
+      // API-ключ ИИ сознательно не экспортируется
+    };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'apex-backup-' + todayKey() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    showToast('Файл сохранён ✓');
+  } catch (e) { showToast('Не получилось: ' + e.message); }
+}
+
+function importJSON(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!d || d.apex !== 1) { showToast('Это не файл резервной копии APEX'); input.value = ''; return; }
+      const day = e => localDay(e.ts);
+      // опросники: по дням, новее побеждает
+      const me = {}; getEntries().forEach(e => { me[day(e)] = e; });
+      let nE = 0; const chE = [];
+      (d.entries || []).forEach(e => {
+        if (!e || !e.ts) return;
+        const k = day(e);
+        if (!me[k] || (e.ts || 0) > (me[k].ts || 0)) { chE.push(e); me[k] = e; nE++; }
+      });
+      const mergedE = Object.values(me).sort((a, b) => a.ts - b.ts).slice(-90);
+      try { localStorage.setItem('gt_entries', JSON.stringify(mergedE)); } catch {}
+      // тренировки: по id, новее побеждает
+      const mw = {}; getWorkouts().forEach(w => { mw[w.id] = w; });
+      let nW = 0; const chW = [];
+      (d.workouts || []).forEach(w => {
+        if (!w || !w.id) return;
+        if (!mw[w.id] || (w.ts || 0) > (mw[w.id].ts || 0)) { chW.push(w); mw[w.id] = w; nW++; }
+      });
+      try { localStorage.setItem('gt_workouts', JSON.stringify(Object.values(mw).slice(-400))); } catch {}
+      // polar: по id или ts
+      const mp = {}; getPolar().forEach(p => { mp[p.id || p.ts] = p; });
+      let nP = 0;
+      (d.polar || []).forEach(p => {
+        if (!p) return; const k = p.id || p.ts;
+        if (k && !mp[k]) { mp[k] = p; nP++; }
+      });
+      try { localStorage.setItem('gt_polar', JSON.stringify(Object.values(mp))); } catch {}
+      if (d.goal) { try { localStorage.setItem('gt_goal', String(d.goal)); } catch {} }
+      // досылаем новое в облако, если оно доступно
+      let up = 0;
+      if (typeof db !== 'undefined' && db && navigator.onLine) {
+        for (const e of chE) { try { if (await fbSaveEntry(e)) up++; } catch (er) {} }
+        for (const w of chW) { try { if (await fbSaveWorkout(w)) up++; } catch (er) {} }
+      }
+      showToast('Импорт готов: опросов +' + nE + ', тренировок +' + nW + ', Polar +' + nP + (up ? ' · в облако: ' + up : ''));
+      setTimeout(() => location.reload(), 1500);
+    } catch (e) { showToast('Файл не читается: ' + e.message); }
+    input.value = '';
+  };
+  rd.readAsText(f);
+}
+
+// ── HISTORY ───────────────────────────────────────
+function renderHistory() {
+  const days = buildDays().filter(isTracked).reverse().slice(0, 120);
+  const el = document.getElementById('history-list');
+  if (!days.length) {
+    el.innerHTML = '<div class="hist-empty">📭 Пока нет записей</div>';
+    return;
+  }
+  const stars = v => '⭐'.repeat(v) + '☆'.repeat(5 - v);
+  el.innerHTML = days.map((d, i) => {
+    const e = d.e;
+    const ws = (d.w || []).slice().sort((a, b) => a.ts - b.ts);
+    const dateStr = d.date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+    const sub = ws.length
+      ? ws.map(w => { const t = WK_TYPES[w.type] || WK_TYPES.other; return w.type === 'rest' ? '😴 отдых' : `${t.e} ${w.dur} мин`; }).join(' · ')
+      : 'тренировка не записана';
+    let chip = '<div class="hi-pct-chip" style="color:var(--fg3);border:1px solid var(--s3)">—</div>';
+    let zones = '';
+    let qHTML = '';
+    if (e) {
+      const pct = pctOf(e);
+      const color = levelColor(pct);
+      chip = `<div class="hi-pct-chip" style="background:${color}22;color:${color};border:1px solid ${color}44">${pct}%</div>`;
+      const zl = (!e.zones || !e.zones.length || e.zones[0] === 'none')
+        ? [{ label: 'Всё хорошо', ok: true }]
+        : e.zones.map(z => ({ label: ZONES_LABEL[z] || z, ok: false }));
+      zones = `<div class="hi-zones">${zl.map(z => `<span class="zone-chip${z.ok ? ' ok' : ''}">${z.label}</span>`).join('')}</div>`;
+      qHTML = `
+        <div class="hi-sec">Утренний опросник</div>
+        <div class="hi-stat-row"><div class="hi-stat-label">😴 Сон</div><div class="hi-stars">${stars(e.sleep)}${e.sleepH ? ' · ' + e.sleepH + ' ч' : ''}</div></div>
+        ${e.sleepScore || e.sleepHR ? `<div class="hi-stat-row"><div class="hi-stat-label">⌚ Часы</div><div class="hi-stars">${[e.sleepScore ? 'оценка ' + e.sleepScore : '', e.sleepHR ? 'пульс ночью ' + e.sleepHR : ''].filter(Boolean).join(' · ')}</div></div>` : ''}
+        <div class="hi-stat-row"><div class="hi-stat-label">⚡ Энергия</div><div class="hi-stars">${stars(e.energy)}</div></div>
+        <div class="hi-stat-row"><div class="hi-stat-label">${MOOD_EMOJI[e.mood]} Настроение</div><div class="hi-stars">${stars(e.mood)}</div></div>
+        <div class="hi-stat-row"><div class="hi-stat-label">💪 Готовность</div><div class="hi-stars">${stars(e.ready)}</div></div>
+        ${e.notes ? `<div class="hi-notes">📝 ${esc(e.notes)}</div>` : ''}`;
+    }
+    const wHTML = ws.length ? `<div class="hi-sec">Тренировки</div>${ws.map(w => wkItemHTML(w, false, false)).join('')}` : '';
+    return `
+      <div class="hist-item">
+        <div class="hi-main" onclick="toggleHist(${i})">
+          <div class="hi-date">
+            <div class="hi-date-day">${dateStr}</div>
+            <div class="hi-date-time">${sub}</div>
+          </div>
+          ${chip}
+        </div>
+        ${zones}
+        <div class="hi-detail" id="hd-${i}">${qHTML}${wHTML}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleHist(i) {
+  const el = document.getElementById('hd-' + i);
+  el.classList.toggle('open');
+}
+
+// ── TOAST ─────────────────────────────────────────
+let _tT;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_tT);
+  _tT = setTimeout(() => t.classList.remove('show'), msg.length > 40 ? 4200 : 2200);
+}
+
+// ── INIT ──────────────────────────────────────────
+function applyUrlParams() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const sh = parseFloat((q.get('sh') || '').replace(',', '.')), shr = parseInt(q.get('shr'), 10), ss = parseInt(q.get('ss'), 10);
+    if (!(sh > 0) && !(shr > 0) && !(ss > 0)) return;
+    const ok = (v, a, b) => v >= a && v <= b;
+    const e = getTodayEntry();
+    if (e) {
+      if (ok(sh, 1, 16)) e.sleepH = Math.round(sh * 10) / 10;
+      if (ok(ss, 1, 100)) e.sleepScore = ss;
+      if (ok(shr, 30, 120)) e.sleepHR = shr;
+      saveEntry(e);
+      goTab('check');
+    } else {
+      goTab('check');
+      if (ok(sh, 1, 16)) { document.getElementById('q-sleeph').value = Math.round(sh * 10) / 10; sleepHInput(); }
+      if (ok(ss, 1, 100)) document.getElementById('q-sleeps').value = ss;
+      if (ok(shr, 30, 120)) document.getElementById('q-sleephr').value = shr;
+      showToast('Данные сна подставлены. Заполни остальное');
+    }
+    history.replaceState(null, '', location.pathname);
+  } catch (e) { console.warn('url params', e); }
+}
+
+function hideSplash() {
+  const sp = document.getElementById('splash');
+  if (!sp || sp.classList.contains('hide')) return;
+  sp.classList.add('hide');
+  setTimeout(() => { sp.remove(); }, 600);
+}
+(function init() {
+  setTimeout(hideSplash, 1500);
+  document.getElementById('splash').addEventListener('click', hideSplash);
+  renderHome();
+  applyUrlParams();
+  maybeOpenQ();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderHome(); maybeOpenQ(); } });
+  window.addEventListener('online', () => { try { syncFromCloud(); } catch {} });
+  try { if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch {}
+  // Auth: показываем вход, пока не авторизован
+  const loginEl = document.getElementById('login');
+  try {
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) { loginEl.hidden = true; syncFromCloud(); }
+      else { loginEl.hidden = false; }
+    });
+    document.getElementById('login-form').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const err = document.getElementById('login-err');
+      err.textContent = ''; btn.disabled = true;
+      try {
+        await firebase.auth().signInWithEmailAndPassword(
+          document.getElementById('login-email').value.trim(),
+          document.getElementById('login-pass').value);
+      } catch (e) {
+        err.textContent = (e.code === 'auth/network-request-failed')
+          ? 'Нет сети. Проверь интернет.' : 'Неверная почта или пароль.';
+      }
+      btn.disabled = false;
+    });
+  } catch (e) { console.warn('Auth init failed:', e); loginEl.hidden = true; syncFromCloud(); }
+  // PWA: обновление, если service worker активировал новую версию
+  try {
+    navigator.serviceWorker && navigator.serviceWorker.addEventListener('controllerchange', () => {
+      try { if (sessionStorage.getItem('apex-sw-reload')) return; sessionStorage.setItem('apex-sw-reload', '1'); location.reload(); } catch {}
+    });
+  } catch {}
+  // Вертикальная ориентация (где браузер позволяет)
+  try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(() => {}); } catch {}
+})();
+</script>
