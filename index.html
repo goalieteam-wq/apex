@@ -584,7 +584,7 @@ body {
 .hm-streak span { font-size: 10px; color: var(--fg3); }
 .hm-brandrow { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .hm-brandrow .hm-brand { margin-bottom: 0; }
-.hm-logo { width: 52px; height: 52px; border-radius: 14px; border: 1px solid rgba(61,255,140,.4); background: #000; flex: none; display: block; }
+.hm-logo { width: 52px; height: 52px; flex: none; display: block; }
 .hm-tools { display: flex; align-items: center; gap: 10px; }
 .hm-factbtn { width: 42px; height: 42px; border-radius: 13px; background: var(--s1); border: 1px solid var(--s3); font-size: 19px; cursor: pointer; flex: none; line-height: 1; }
 .hm-factbtn:active { border-color: var(--accent); }
@@ -1392,7 +1392,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 3</span></div></div>`;
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 4</span></div></div>`;
 }
 function streakDays() {
   const set = new Set(getEntries().map(e => localDay(e.ts)));
@@ -3282,9 +3282,30 @@ function hideSplash() {
   } catch (e) { console.warn('Auth init failed:', e); loginEl.hidden = true; syncFromCloud(); }
   // PWA: обновление, если service worker активировал новую версию
   try {
+    const hadCtrl = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
     navigator.serviceWorker && navigator.serviceWorker.addEventListener('controllerchange', () => {
-      try { if (sessionStorage.getItem('apex-sw-reload')) return; sessionStorage.setItem('apex-sw-reload', '1'); location.reload(); } catch {}
+      try {
+        if (!hadCtrl) return;
+        if (sessionStorage.getItem('apex-sw-reload')) { sessionStorage.removeItem('apex-sw-reload'); return; }
+        sessionStorage.setItem('apex-sw-reload', '1'); location.reload();
+      } catch {}
     });
+  } catch {}
+  // PWA: авто-обновление — при запуске и каждом возврате в приложение сверяем версию на сервере (по крошечному sw.js), при изменении — тихо перезагружаемся на новую версию
+  try {
+    let apexVer = null;
+    const apexCheckVer = async () => {
+      try {
+        const t = await (await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' })).text();
+        const v = (t.match(/apex-v\d+/) || [])[0];
+        if (!v) return;
+        if (apexVer === null) { apexVer = v; return; }
+        if (v !== apexVer) { apexVer = v; sessionStorage.setItem('apex-sw-reload', '1'); location.reload(); }
+      } catch {}
+    };
+    apexCheckVer();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) apexCheckVer(); });
+    setInterval(() => { if (!document.hidden) apexCheckVer(); }, 5 * 60 * 1000);
   } catch {}
   // Вертикальная ориентация (где браузер позволяет)
   try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(() => {}); } catch {}
