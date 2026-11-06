@@ -584,7 +584,7 @@ body {
 .hm-streak span { font-size: 10px; color: var(--fg3); }
 .hm-brandrow { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .hm-brandrow .hm-brand { margin-bottom: 0; }
-.hm-logo { width: 43px; height: 43px; border-radius: 12px; border: 1px solid rgba(61,255,140,.4); background: #000; flex: none; display: block; }
+.hm-logo { width: 52px; height: 52px; border-radius: 14px; border: 1px solid rgba(61,255,140,.4); background: #000; flex: none; display: block; }
 .hm-tools { display: flex; align-items: center; gap: 10px; }
 .hm-factbtn { width: 42px; height: 42px; border-radius: 13px; background: var(--s1); border: 1px solid var(--s3); font-size: 19px; cursor: pointer; flex: none; line-height: 1; }
 .hm-factbtn:active { border-color: var(--accent); }
@@ -656,14 +656,16 @@ body {
 .hz-bar span { display: block; min-width: 2px; }
 .hz-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--fg2, var(--fg3)); }
 .hz-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
-.tip-line { font-size: 14px; line-height: 1.45; padding: 6px 0; }
+.tip-line { font-size: 15px; line-height: 1.5; padding: 10px 2px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.tip-line:last-child { border-bottom: none; }
 .tip-fact { font-size: 13px; line-height: 1.45; color: var(--fg2, var(--fg3)); padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--fg3); }
-/* ── шторка факта ── */
-.sheet-ov { position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 120; display: flex; align-items: flex-end; }
-.sheet { width: 100%; max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--s1); border-radius: 20px 20px 0 0; border-top: 1px solid var(--s3); padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
-.sheet-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.sheet-x { background: var(--s2); border: 1px solid var(--s3); color: var(--fg2); width: 32px; height: 32px; border-radius: 10px; font-size: 15px; cursor: pointer; flex: none; }
-.sheet-fact { font-size: 15px; line-height: 1.55; padding: 2px 0 14px; border-bottom: 1px solid var(--s3); margin-bottom: 10px; }
+/* ── «Факт дня»: экран сверху-вниз — всё видно без прокрутки ── */
+.sheet-ov { position: fixed; inset: 0; z-index: 260; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; animation: fsIn .22s ease both; }
+@keyframes fsIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+.sheet { max-width: 480px; margin: 0 auto; min-height: 100%; padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 32px); }
+.sheet-hdr { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 6px 0; background: var(--bg); }
+.sheet-x { background: var(--s2); border: 1px solid var(--s3); color: var(--fg2); width: 36px; height: 36px; border-radius: 11px; font-size: 16px; cursor: pointer; flex: none; }
+.sheet-fact { font-size: 16px; line-height: 1.6; padding: 14px 15px; background: var(--s1); border: 1px solid var(--s3); border-radius: 16px; margin: 0 0 18px; }
 .st-cap { font-size: 12.5px; color: var(--fg3); line-height: 1.5; margin: -4px 0 12px; }
 /* ── кнопка закрытия карточки ── */
 .brief-x { background: none; border: none; color: var(--fg3); font-size: 15px; padding: 4px 6px; cursor: pointer; flex: none; }
@@ -1080,7 +1082,7 @@ body {
 <div id="toast"></div>
 
 <!-- Шторка «Факт дня и подсказки» -->
-<div id="sheet-ov" class="sheet-ov" style="display:none" ontouchstart="sheetGuard._y=null" ontouchmove="sheetGuard(event)" onclick="if(event.target===this)factSheetClose()"><div class="sheet" id="sheet-box"></div></div>
+<div id="sheet-ov" class="sheet-ov" style="display:none"><div class="sheet" id="sheet-box"></div></div>
 
 <script>
 // ── Firebase ───────────────────────────────────────
@@ -1390,7 +1392,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 2</span></div></div>`;
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 3</span></div></div>`;
 }
 function streakDays() {
   const set = new Set(getEntries().map(e => localDay(e.ts)));
@@ -1584,38 +1586,21 @@ function dataTips() {
   out.sort((x, y) => (y.startsWith('🩹') ? 1 : 0) - (x.startsWith('🩹') ? 1 : 0));
   return out.slice(0, 3);
 }
-// Пока шторка открыта — фон (главный экран) не прокручивается
-function sheetGuard(e) {
-  const s = document.getElementById('sheet-box');
-  if (!s) { e.preventDefault(); return; }
-  if (s.scrollHeight <= s.clientHeight + 1) { e.preventDefault(); return; }
-  const y = e.touches && e.touches[0] ? e.touches[0].clientY : 0;
-  const prev = sheetGuard._y == null ? y : sheetGuard._y;
-  const atTop = s.scrollTop <= 0;
-  const atBot = s.scrollTop + s.clientHeight >= s.scrollHeight - 1;
-  if ((atTop && y > prev + 2) || (atBot && y < prev - 2)) e.preventDefault();
-  sheetGuard._y = y;
-}
 function factSheetOpen() {
   const ov = document.getElementById('sheet-ov');
   if (!ov) return;
-  document.documentElement.style.overflow = 'hidden';
-  document.body.style.overflow = 'hidden';
   const tips = dataTips();
   document.getElementById('sheet-box').innerHTML = `
     <div class="sheet-hdr"><div class="card-label" style="margin:0">📌 Факт дня</div><button class="sheet-x" onclick="factSheetClose()">✕</button></div>
     <div class="sheet-fact" id="tip-fact">${esc(aiFactGet())} <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button></div>
     <div class="card-label" style="margin-bottom:2px">💡 Подсказки на сегодня</div>
-    ${tips.length ? tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('') : '<div class="wk-empty">Особых подсказок нет — данные ровные. Так держать!</div>'}`;
-  ov.style.display = 'flex';
+    ${tips.length ? tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('') : '<div class="wk-empty">Особых подсказок нет — данные ровные. Так держать!</div>'}
+    <button class="btn-home" style="width:100%;margin-top:16px" onclick="factSheetClose()">✕ Закрыть</button>`;
+  ov.style.display = 'block';
+  ov.scrollTop = 0;
   aiFactMaybe();
 }
-function factSheetClose() {
-  const ov = document.getElementById('sheet-ov');
-  if (ov) ov.style.display = 'none';
-  document.documentElement.style.overflow = '';
-  document.body.style.overflow = '';
-}
+function factSheetClose() { const ov = document.getElementById('sheet-ov'); if (ov) ov.style.display = 'none'; }
 
 // ── ИИ-факт дня: генерируется раз в день, кнопка ⟳ делает новый ──
 function aiFactStore() { try { return JSON.parse(localStorage.getItem('gt_aifact') || '{}'); } catch { return {}; } }
