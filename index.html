@@ -582,6 +582,12 @@ body {
 .hm-streak { text-align: center; background: var(--s1); border: 1px solid var(--s3); border-radius: 14px; padding: 8px 12px; min-width: 64px; }
 .hm-streak b { display: block; font-size: 20px; color: var(--warn); }
 .hm-streak span { font-size: 10px; color: var(--fg3); }
+.hm-brandrow { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.hm-brandrow .hm-brand { margin-bottom: 0; }
+.hm-logo { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(61,255,140,.4); background: #000; flex: none; display: block; }
+.hm-tools { display: flex; align-items: center; gap: 10px; }
+.hm-factbtn { width: 42px; height: 42px; border-radius: 13px; background: var(--s1); border: 1px solid var(--s3); font-size: 19px; cursor: pointer; flex: none; line-height: 1; }
+.hm-factbtn:active { border-color: var(--accent); }
 .lvl-green { --lc: 61,255,140; } .lvl-yellow { --lc: 255,140,61; } .lvl-red { --lc: 255,77,106; }
 .hero { border-radius: 20px; padding: 18px; margin-bottom: 12px; border: 1px solid rgba(var(--lc),.38);
   background: linear-gradient(160deg, rgba(var(--lc),.18), rgba(var(--lc),.03) 62%), var(--s1); }
@@ -654,6 +660,19 @@ body {
 .hz-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 .tip-line { font-size: 14px; line-height: 1.45; padding: 6px 0; }
 .tip-fact { font-size: 13px; line-height: 1.45; color: var(--fg2, var(--fg3)); padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--fg3); }
+/* ── шторка факта ── */
+.sheet-ov { position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 120; display: flex; align-items: flex-end; }
+.sheet { width: 100%; max-height: 80vh; overflow-y: auto; background: var(--s1); border-radius: 20px 20px 0 0; border-top: 1px solid var(--s3); padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+.sheet-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sheet-x { background: var(--s2); border: 1px solid var(--s3); color: var(--fg2); width: 32px; height: 32px; border-radius: 10px; font-size: 15px; cursor: pointer; flex: none; }
+.sheet-fact { font-size: 15px; line-height: 1.55; padding: 2px 0 14px; border-bottom: 1px solid var(--s3); margin-bottom: 10px; }
+.st-cap { font-size: 12.5px; color: var(--fg3); line-height: 1.5; margin: -4px 0 12px; }
+/* ── напоминания ── */
+.rem-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--s3); font-size: 14px; }
+.rem-row:last-child { border-bottom: none; }
+.rem-txt { flex: 1; }
+.rem-x { background: none; border: none; color: var(--fg3); font-size: 15px; padding: 4px 6px; cursor: pointer; flex: none; }
+.rem-inp { width: 108px; margin: 0; padding: 8px 10px; flex: none; }
 .ep-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
 .ep-k { background: var(--bg2, rgba(255,255,255,.04)); border-radius: 12px; padding: 10px 8px; text-align: center; }
 .ep-k .v { font-size: 20px; font-weight: 700; color: var(--accent); }
@@ -1073,6 +1092,9 @@ body {
 
 <div id="toast"></div>
 
+<!-- Шторка «Факт дня и подсказки» -->
+<div id="sheet-ov" class="sheet-ov" style="display:none" onclick="if(event.target===this)factSheetClose()"><div class="sheet" id="sheet-box"></div></div>
+
 <script>
 // ── Firebase ───────────────────────────────────────
 const firebaseConfig = {
@@ -1328,6 +1350,45 @@ function maybeOpenQ() {
 function signOutUser() {
   try { firebase.auth().signOut().catch(() => {}); } catch {}
 }
+// ── Напоминания (внутренние уведомления) ──
+function remGet() { try { return JSON.parse(localStorage.getItem('gt_rem') || '{}'); } catch { return {}; } }
+function remRowInput(id, label) {
+  const r = remGet();
+  return `<div class="rem-row"><span class="rem-txt">${label}</span><input type="time" class="wk-input rem-inp" value="${r[id] || ''}" onchange="remSet('${id}', this.value)"></div>`;
+}
+function remSet(id, v) {
+  const r = remGet(); r[id] = v || '';
+  try { localStorage.setItem('gt_rem', JSON.stringify(r)); } catch {}
+  showToast(v ? 'Готово: напомню в ' + v : 'Выключил ✕');
+}
+function remDismissed() { try { const s = JSON.parse(localStorage.getItem('gt_rem_off') || '{}'); return s.d === todayKey() ? (s.ids || []) : []; } catch { return []; } }
+function remHide(id) {
+  let s; try { s = JSON.parse(localStorage.getItem('gt_rem_off') || '{}'); } catch { s = {}; }
+  const ids = s.d === todayKey() ? (s.ids || []) : [];
+  s.d = todayKey(); s.ids = ids.concat([id]);
+  try { localStorage.setItem('gt_rem_off', JSON.stringify(s)); } catch {}
+  renderHome();
+}
+function remBannerHTML() {
+  const r = remGet();
+  if (!r.q && !r.n && !r.e) return '';
+  const hid = remDismissed();
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const toMin = t => { if (!t) return null; const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1] || 0); };
+  const entry = getTodayEntry();
+  const wToday = getWorkouts().filter(w => localDay(w.ts) === localDay(Date.now()));
+  const items = [];
+  if (r.q && mins >= toMin(r.q) && (!entry || entry.sleep == null) && !hid.includes('q'))
+    items.push({ id: 'q', txt: '☀️ Утренний опросник ещё не заполнен', btn: 'Заполнить', act: "goTab('check')" });
+  if (r.n && entry && entry.sleep != null && !entry.napH && mins >= toMin(r.n) && !hid.includes('n'))
+    items.push({ id: 'n', txt: '😴 Дневной сон не отмечен', btn: 'Отметить', act: "napOpen()" });
+  if (r.e && mins >= toMin(r.e) && !wToday.length && !hid.includes('e'))
+    items.push({ id: 'e', txt: '🏒 Запиши сегодняшнюю тренировку или отдых', btn: 'Записать', act: "goTab('plan')" });
+  if (!items.length) return '';
+  return `<div class="card" style="border-color:rgba(255,140,61,.45);margin-bottom:12px"><div class="card-label">🔔 Напоминания</div>${items.map(i => `<div class="rem-row"><span class="rem-txt">${i.txt}</span><button class="tip-ref" onclick="${i.act}">${i.btn}</button><button class="rem-x" onclick="remHide('${i.id}')" title="Скрыть до завтра">✕</button></div>`).join('')}</div>`;
+}
+
 function renderSettings() {
   const el = document.getElementById('settings-body');
   if (!el) return;
@@ -1346,6 +1407,13 @@ function renderSettings() {
     <div class="card"><div class="card-label">Цель недели</div>
       <div class="st-sub">Сколько тренировок в неделю ты хочешь делать. Показывается на главной.</div>
       <div class="wk-chips goal">${[1,2,3,4,5,6,7].map(n => `<button class="wk-chip${n === goal ? ' selected' : ''}" onclick="setGoal(${n})">${n}</button>`).join('')}</div></div>
+    <div class="card"><div class="card-label">🔔 Напоминания</div>
+      <div class="st-sub">Когда ты открываешь APEX, на Главной появляется карточка с тем, что не забыть. Оставь время пустым — напоминание выключено.</div>
+      ${remRowInput('q', '☀️ Утренний опросник')}
+      ${remRowInput('n', '😴 Дневной сон')}
+      ${remRowInput('e', '🏒 Записать день вечером')}
+      <div class="st-sub" style="margin:12px 0 0"><b>Настоящее уведомление по времени (iPhone, 1 минута):</b> приложение «Команды» → «Автоматизация» → «+» → «Время суток» → время, например 08:00 → «Добавить действие» → «Открыть приложение» → выбери APEX → «Готово» → выключи «Спросить перед запуском». Утром телефон сам откроет APEX, а внутри его уже встретит напоминание.</div>
+    </div>
     <div class="card"><div class="card-label">Пульсометр Polar</div>
       <div class="st-kv"><span>Сессий в облаке</span><span>${polar.length}</span></div>
       <div class="st-kv"><span>Последняя синхронизация</span><span>${esc(lastTxt)}</span></div>
@@ -1381,8 +1449,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 29.10.2026 · 3</span></div>
-      <div class="st-sub" style="margin-bottom:0">Утреннее напоминание: на iPhone «Команды» → «Автоматизация» → «Время суток» → «Открыть приложение».</div></div>`;
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 1</span></div></div>`;
 }
 function streakDays() {
   const set = new Set(getEntries().map(e => localDay(e.ts)));
@@ -1421,11 +1488,11 @@ function renderHome() {
 
   // ── шапка
   let html = `<div class="hm-hdr"><div>
-      <div class="hm-brand">APEX</div>
+      <div class="hm-brandrow"><img class="hm-logo" src="logo192.png" alt="Эмблема клуба"><div class="hm-brand">APEX</div></div>
       <div class="home-greeting" style="margin-bottom:2px">${greeting()}</div>
       <div class="hm-name">ДМИТРИЙ</div>
       <div class="hm-date">${ruDate()}</div>
-    </div>${streak >= 1 ? `<div class="hm-streak"><b>🔥 ${streak}</b><span>${streak % 10 === 1 && streak !== 11 ? 'день' : 'дн.'} подряд</span></div>` : ''}</div>`;
+    </div><div class="hm-tools">${streak >= 1 ? `<div class="hm-streak"><b>🔥 ${streak}</b><span>${streak % 10 === 1 && streak !== 11 ? 'день' : 'дн.'} подряд</span></div>` : ''}<button class="hm-factbtn" onclick="factSheetOpen()" title="Факт дня и подсказки">📌</button></div></div>`;
 
   // ── главный блок: готовность
   if (entry && reco) {
@@ -1447,6 +1514,9 @@ function renderHome() {
       <div class="s">Опросник займёт минуту, и я подскажу нагрузку на день</div>
       <button class="btn-go" style="width:100%" onclick="goTab('check')">Заполнить опросник</button></div></div>`;
   }
+
+  // ── напоминания (видны, когда открыл приложение)
+  html += remBannerHTML();
 
   // ── ИИ-брифинг на день
   if (entry) {
@@ -1479,9 +1549,6 @@ function renderHome() {
     ? `<div class="card"><div class="card-label">Сегодня</div>${todayW.map(w => wkItemHTML(w, false, false)).join('')}</div>`
     : (pend ? '' : `<div class="card"><div class="card-label">Сегодня</div><div class="wk-empty">Тренировки пока нет. Она появится здесь сама после загрузки в Polar Flow.</div><button class="btn-home" onclick="quickRest()">😴 Сегодня отдых</button></div>`);
 
-  html += '<div id="tip-wrap"></div>';
-
-  // ── неделя по дням
   const now = new Date(), dow = (now.getDay() + 6) % 7;
   const strip = [];
   for (let i = 0; i < 7; i++) {
@@ -1524,10 +1591,9 @@ function renderHome() {
   }
 
   el.innerHTML = html;
-  renderTips();
 }
 
-// ── Подсказки на главной ──
+// ── Факт дня и подсказки: кнопка 📌 в шапке ──
 const FACTS = [
  'Основное восстановление мышц и гормональный баланс идут во сне. Стабильное время отбоя важнее, чем «добрать» сон в выходные.',
  'Потеря даже около 2% массы тела с жидкостью заметно снижает реакцию и концентрацию. Пей воду в течение дня, а не только на тренировке.',
@@ -1579,15 +1645,19 @@ function dataTips() {
   out.sort((x, y) => (y.startsWith('🩹') ? 1 : 0) - (x.startsWith('🩹') ? 1 : 0));
   return out.slice(0, 3);
 }
-function renderTips() {
-  const el = document.getElementById('tip-wrap');
-  if (!el) return;
+function factSheetOpen() {
+  const ov = document.getElementById('sheet-ov');
+  if (!ov) return;
   const tips = dataTips();
-  el.innerHTML = `<div class="card"><div class="card-label">💡 Подсказки на сегодня</div>`
-    + tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('')
-    + `<div class="tip-fact" id="tip-fact">📌 <b>Факт дня.</b> ${esc(aiFactGet())} <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button></div></div>`;
+  document.getElementById('sheet-box').innerHTML = `
+    <div class="sheet-hdr"><div class="card-label" style="margin:0">📌 Факт дня</div><button class="sheet-x" onclick="factSheetClose()">✕</button></div>
+    <div class="sheet-fact" id="tip-fact">${esc(aiFactGet())} <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button></div>
+    <div class="card-label" style="margin-bottom:2px">💡 Подсказки на сегодня</div>
+    ${tips.length ? tips.map(t => `<div class="tip-line">${esc(t)}</div>`).join('') : '<div class="wk-empty">Особых подсказок нет — данные ровные. Так держать!</div>'}`;
+  ov.style.display = 'flex';
   aiFactMaybe();
 }
+function factSheetClose() { const ov = document.getElementById('sheet-ov'); if (ov) ov.style.display = 'none'; }
 
 // ── ИИ-факт дня: генерируется раз в день, кнопка ⟳ делает новый ──
 function aiFactStore() { try { return JSON.parse(localStorage.getItem('gt_aifact') || '{}'); } catch { return {}; } }
@@ -1725,7 +1795,10 @@ function aiSys(noMem) {
     + 'Данные: утренний опросник — качество сна 1–5, энергия 1–5, настроение 1–5, болевые зоны, готовность к тренировке 1–5, часы ночного сна, часы дневного сна, оценка сна 0–100, средний пульс за ночь; '
     + 'тренировки — лёд/зал/кардио/восстановление/отдых, длительность, тяжесть RPE 1–10, качество работы 1–5, самочувствие после 1–5, упражнения (подходы×повторы×кг), пульс и зоны с Polar H10. '
     + 'Дни в данных помечены «сегодня» и «вчера» — сверяйся с метками и не путай, какой день какой. '
-    + 'Как отвечать: по-русски, на «ты», живым и уверенным тоном опытного тренера — конкретно и по-человечески, без канцелярита. '
+    + 'Твой подопечный — опытный спортсмен: тренируется давно и тяжело, сам тренер вратарей. Большие объёмы и тяжёлые дни для него — норма, а не проблема: не пугайся нагрузки и не советуй «просто отдохнуть», если в данных нет явных признаков недовосстановления (несколько дней падающей готовности, заметно высокий ночной пульс, повторяющиеся боли). '
+    + 'Перелёты, ночные переезды и стресс игр — обычная часть его жизни. Когда он про них говорит, учитывай сдвинутый сон и дорожную усталость и предлагай короткие рабочие приёмы под ситуацию: когда лечь, когда ловить дневной сон, еда и вода в дороге, лёгкая раскатка. Без общих слов. '
+    + 'Как отвечать: по-русски, на «ты». Тон — тёплый и уверенный тренер, который давно знает спортсмена: уважительно, прямо, иногда с лёгким юмором. Поддержка — короткая и по делу, без сюсюканья: никаких «бедный», жалости, уменьшительных слов и стопок восклицательных знаков. '
+    + 'Сначала реакция на человека и его день, потом цифры. Хвали конкретно и не в каждом ответе; когда уместно, задай один встречный вопрос — чтобы понять или помочь. '
     + 'Пиши грамотно: следи за падежами, предлогами и пробелами («в зал», «на лёд», «на льду»), не допускай опечаток и слипшихся слов вроде «позала». '
     + 'Опирайся на конкретные цифры из данных и называй их прямо; давая совет, говори как именно его выполнить — сколько, когда, в чём выражается. '
     + 'Разнообразь речь: не начинай ответы одинаково, избегай шаблонных фраз вроде «стоит отметить», «важно помнить», «продолжай в том же духе», не повторяй свои прошлые формулировки. '
@@ -2830,6 +2903,21 @@ function corrRowHTML(spec, c) {
   </div>`;
 }
 
+// Простая формулировка связи без «r =»: только суть, сила и число дней
+function corPlainHTML(spec, c) {
+  const r = c.r;
+  const txt = r >= 0 ? spec.pos : spec.neg;
+  const aiBtn = (Math.abs(r) >= 0.35 && c.n >= 14) ? ` <button class="tip-ref" onclick="aiExplainCor('${spec.a}','${spec.b}',${spec.lag})">🤖 объяснить</button>` : '';
+  return `<div class="st-ins">${esc(txt)} <span class="cor-n">${strengthWord(r)} · ${c.n} дн.</span>${aiBtn}</div>`;
+}
+function corToggle() {
+  const el = document.getElementById('cor-all'), b = document.getElementById('cor-tgl');
+  if (!el || !b) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  b.textContent = open ? 'Показать все связи' : 'Свернуть связи';
+}
+
 // Сравнение средних по группам. keyFn → название группы или null; valFn → число или null.
 function groupMeans(D, keyFn, valFn) {
   const g = {};
@@ -2958,12 +3046,13 @@ function renderStats() {
   const prior = [];
   for (let k = 1; k <= 4; k++) { const a = last - 6 - 7 * k; if (a >= 0) prior.push(sumLoad(a, a + 6)); }
   const chronic = prior.length >= 2 ? avgOf(prior) : null;
-  let statusHTML = `<div class="st-status">Сравнение с обычным уровнем появится, когда накопится 3 недели данных.</div>`;
+  let statusHTML = `<div class="st-status">🟡 Сравнение с обычным уровнем появится, когда накопится 3 недели данных.</div>`;
   if (chronic && chronic > 0) {
     const ratio = acute / chronic;
     const cls = ratio > 1.5 ? 'high' : ratio > 1.3 ? 'mid' : ratio < 0.8 ? 'mid' : 'ok';
-    const word = ratio > 1.5 ? 'высокая, риск перегрузки' : ratio > 1.3 ? 'повышенная' : ratio < 0.8 ? 'ниже обычной' : 'в норме';
-    statusHTML = `<div class="st-status ${cls}">Нагрузка за 7 дней ${word}: ${ratio.toFixed(2)} от обычной.</div>`;
+    const dot = cls === 'ok' ? '🟢' : cls === 'high' ? '🔴' : '🟡';
+    const word = ratio > 1.5 ? 'высокая, есть риск перегрузки' : ratio > 1.3 ? 'выше обычной — слушай организм' : ratio < 0.8 ? 'ниже обычной' : 'в норме';
+    statusHTML = `<div class="st-status ${cls}">${dot} Нагрузка за 7 дней — ${word} (${ratio.toFixed(2)} от обычной).</div>`;
   }
   const week = D.slice(-7);
   const sessions = week.reduce((s, d) => s + (d.w || []).filter(w => w.type !== 'rest').length, 0);
@@ -2999,6 +3088,11 @@ function renderStats() {
   const insights = cors.filter(x => x.c.r != null && x.c.n >= 14 && Math.abs(x.c.r) >= 0.35)
     .sort((a, b) => Math.abs(b.c.r) - Math.abs(a.c.r)).slice(0, 5)
     .map(x => `${x.c.r >= 0 ? x.s.pos : x.s.neg} <span class="cor-n">(${strengthWord(x.c.r)}, ${x.c.n} дн.)</span>`);
+  const strong = cors.filter(x => x.c.r != null && x.c.n >= 10)
+    .sort((a, b) => Math.abs(b.c.r) - Math.abs(a.c.r)).slice(0, 5);
+  const topCorHTML = strong.length
+    ? strong.map(x => corPlainHTML(x.s, x.c)).join('')
+    : '<div class="wk-empty">Сильных связей пока не видно — копим данные (нужно от 14 дней).</div>';
 
   // Сравнения групп
   const prevTracked = (D, i) => i > 0 && isTracked(D[i - 1]);
@@ -3030,12 +3124,14 @@ function renderStats() {
 
     <div class="card">
       <div class="card-label">Что заметно</div>
+      <div class="st-cap">Самые заметные находки на твоих данных. Это подсказки, а не диагнозы.</div>
       ${insights.length ? insights.map(t => `<div class="st-ins">${t}</div>`).join('')
         : '<div class="wk-empty">Пока рано для выводов. Они появятся, когда накопится от 14 дней данных.</div>'}
     </div>
 
     <div class="card">
       <div class="card-label">Нагрузка</div>
+      <div class="st-cap">Последняя неделя сравнивается с твоей обычной — так перегрузка видна заранее.</div>
       ${statusHTML}
       <div class="st-kpis">
         ${kpi(sessions, 'тренировок за 7 дней')}
@@ -3051,15 +3147,19 @@ function renderStats() {
 
     <div class="card">
       <div class="card-label">Готовность, 30 дней</div>
+      <div class="st-cap">Столбики — утренняя готовность в %. Частые низкие дни подряд — повод разобраться.</div>
       ${barsSVG(readyItems, { h: 70, max: 100 })}
     </div>
 
     <div class="card">
-      <div class="card-label">Связи</div>
-      ${cors.map(x => corrRowHTML(x.s, x.c)).join('')}
+      <div class="card-label">Связи в твоих данных</div>
+      <div class="st-cap">Что с чем дружит: сон, нагрузка, самочувствие. Сверху — самые сильные, по-человечески.</div>
+      ${topCorHTML}
+      <button class="tip-ref" style="margin-top:10px" id="cor-tgl" onclick="corToggle()">Показать все связи (${cors.length})</button>
+      <div id="cor-all" style="display:none;margin-top:6px">${cors.map(x => corrRowHTML(x.s, x.c)).join('')}</div>
     </div>
 
-    ${groups ? `<div class="card"><div class="card-label">Сравнения</div>${groups}</div>` : ''}
+    ${groups ? `<div class="card"><div class="card-label">Сравнения</div><div class="st-cap">Средние показатели в разных ситуациях — видно, как на тебя действуют разные дни.</div>${groups}</div>` : ''}
 
     <div class="st-note">Связь не означает причину: это подсказки для твоих решений. Чем больше дней записано, тем они надёжнее.</div>`;
 }
