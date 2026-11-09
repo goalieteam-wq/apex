@@ -5,53 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>APEX — скачать обновление</title>
 <style>
-  body { background:#000; color:#e8e8ea; font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif; margin:0; padding:48px 22px; text-align:center; }
-  .card { max-width:520px; margin:0 auto; border:1px solid #1d211f; border-radius:20px; padding:34px 26px; background:#070709; }
+  body { background:#000; color:#e8e8ea; font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif; margin:0; padding:44px 22px; text-align:center; }
+  .card { max-width:540px; margin:0 auto; border:1px solid #1d211f; border-radius:20px; padding:32px 26px; background:#070709; }
   h1 { color:#3dff8c; font-size:26px; margin:0 0 10px; letter-spacing:.02em; }
-  p { color:#9a9aa0; font-size:15px; line-height:1.6; margin:8px 0 26px; }
-  .btn { display:inline-block; background:#3dff8c; color:#04240f; font-weight:800; font-size:18px; padding:18px 40px; border-radius:16px; border:none; cursor:pointer; font-family:inherit; }
+  p { color:#9a9aa0; font-size:15px; line-height:1.6; margin:8px 0 24px; }
+  .btn { display:inline-block; background:#3dff8c; color:#04240f; font-weight:800; font-size:18px; padding:18px 40px; border-radius:16px; border:none; cursor:pointer; font-family:inherit; text-decoration:none; }
   .btn:active { transform:scale(.98); }
-  .btn:disabled { opacity:.45; }
   .raw { color:#3dff8c; font-size:14px; display:inline-block; margin-top:16px; }
-  .err { color:#ffd60a; font-size:14px; margin-top:14px; min-height:18px; }
-  ol { text-align:left; display:inline-block; color:#c7c7cc; font-size:15px; line-height:1.75; margin:24px auto 0; padding-left:22px; }
+  ol { text-align:left; display:inline-block; color:#c7c7cc; font-size:15px; line-height:1.75; margin:22px auto 0; padding-left:22px; }
   b { color:#e8e8ea; }
+  .hint { border-top:1px solid #1d211f; margin-top:26px; padding-top:18px; }
 </style>
 </head>
 <body>
 <div class="card">
 <h1>APEX · обновление</h1>
-<p>Нажми кнопку — скачается файл <b>UPDATE.command</b>.<br>
-Это тот же «ОБНОВИТЬ», просто с именем, которое браузер скачивает без лишних вопросов.</p>
-<button class="btn" id="dl">СКАЧАТЬ ОБНОВЛЕНИЕ</button>
-<div class="err" id="err"></div>
-<a class="raw" href="https://raw.githubusercontent.com/goalieteam-wq/apex-native/main/UPDATE.command">прямая ссылка (если кнопка не сработала)</a>
+<p>Жми зелёную кнопку — скачается архив <b>UPDATE.zip</b>.<br>В нём — обновлятор с уже выставленным правом запуска, ошибка «нет прав доступа» исчезла.</p>
+<a class="btn" href="UPDATE.zip" download>СКАЧАТЬ ОБНОВЛЕНИЕ</a>
+<a class="raw" href="https://raw.githubusercontent.com/goalieteam-wq/apex-native/main/UPDATE.command">запасная ссылка (.command, может показать текст — так и должно быть)</a>
 <ol>
-  <li>Файл окажется в папке <b>«Загрузки»</b>.</li>
-  <li>Двойной клик по нему. Если Mac скажет «нельзя проверить разработчика» — <b>правый клик → Открыть → Открыть</b> (нужно один раз).</li>
-  <li>Скрипт сам обновит проект и откроет Xcode: выбери свой iPhone сверху → <b>▶</b>.</li>
+  <li>Открой папку <b>«Загрузки»</b> — там лежит <b>UPDATE.zip</b>. Двойной клик по нему — рядом появится файл <b>UPDATE.command</b>.</li>
+  <li>Двойной клик по <b>UPDATE.command</b>. Если Mac скажет «нельзя проверить» — <b>правый клик → Открыть → Открыть</b> (только один раз).</li>
+  <li>Дальше всё само: обновит проект и откроет Xcode — выбери свой iPhone сверху → <b>▶</b>.</li>
+  <li>После первого запуска на <b>Рабочем столе</b> появится кнопка <b>«APEX ОБНОВИТЬ»</b> — следующие обновления делаются одним двойным кликом по ней, без скачиваний.</li>
 </ol>
-<p style="margin-top:22px">А ещё проще: файл <b>ОБНОВИТЬ.command</b> уже лежит в папке <b>apex-native</b> на Mac и сам себя обновляет — просто открой её в Finder и запусти двойным кликом. Ничего скачивать не нужно.</p>
+<div class="hint">
+<p style="margin-bottom:10px"><b>Где моя папка apex-native?</b></p>
+<p style="margin-top:0">Нажми <b>Cmd + Пробел</b>, набери <b>apex-native</b> и щёлкни по найденной папке — Finder сам её откроет.</p>
 </div>
-<script>
-const btn = document.getElementById('dl'), err = document.getElementById('err');
-btn.onclick = async () => {
-  btn.disabled = true; err.textContent = 'Скачиваю…';
-  try {
-    const r = await fetch('https://raw.githubusercontent.com/goalieteam-wq/apex-native/main/UPDATE.command', {cache: 'no-store'});
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const b = await r.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(b);
-    a.download = 'UPDATE.command';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    err.textContent = 'Готово! Файл в «Загрузках» — открой его двойным кликом.';
-  } catch (e) {
-    err.textContent = 'Не получилось (' + e.message + '). Жми ссылку ниже.';
-  }
-  btn.disabled = false;
-};
-</script>
+</div>
 </body>
 </html>
