@@ -585,6 +585,16 @@ body {
 .hm-brandrow { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .hm-brandrow .hm-brand { margin-bottom: 0; }
 .hm-logo { width: 52px; height: 52px; flex: none; display: block; }
+/* ── Шапка-кейс: чёрная панель, DM, эмблема, КХЛ ── */
+.case-hero { position: relative; overflow: hidden; background: #070709; border: 1px solid #1d211f; border-radius: 20px; padding: 16px 16px 12px; margin: 0 0 16px; }
+.case-hero::after { content: ''; position: absolute; inset: 0; background: radial-gradient(140px 100px at 50% 60%, rgba(61,255,140,.10), transparent 70%); pointer-events: none; }
+.ch-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; position: relative; z-index: 1; }
+.ch-dm { font-family: 'Bebas Neue', sans-serif; font-size: 34px; line-height: .92; letter-spacing: 2px; color: var(--accent); }
+.ch-tools { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; }
+.ch-emblem { position: relative; z-index: 1; display: flex; justify-content: center; margin: 4px 0 8px; }
+.ch-emblem svg { width: 172px; height: auto; filter: drop-shadow(0 0 16px rgba(61,255,140,.22)); }
+.ch-khl { position: relative; z-index: 1; display: flex; justify-content: center; padding-bottom: 2px; }
+.ch-khl svg { width: 34px; height: auto; opacity: .92; }
 .hm-tools { display: flex; align-items: center; gap: 10px; }
 .hm-factbtn { width: 42px; height: 42px; border-radius: 13px; background: var(--s1); border: 1px solid var(--s3); font-size: 19px; cursor: pointer; flex: none; line-height: 1; }
 .hm-factbtn:active { border-color: var(--accent); }
@@ -1245,7 +1255,13 @@ async function syncFromCloud() {
     setWorkouts(Object.values(byId).sort((a, b) => a.ts - b.ts));
   }
   const cloudP = await fbLoadPolar();
-  if (cloudP) { try { localStorage.setItem('gt_polar', JSON.stringify(cloudP)); } catch {} }
+  if (cloudP) {
+    const knownIds = new Set(getPolar().map(p => p && p.id));
+    try { localStorage.setItem('gt_polar', JSON.stringify(cloudP)); } catch {}
+    // новая тренировка с Polar появилась в приложении → уведомление (только свежие, только в нативе)
+    const fresh = cloudP.filter(p => p && p.id && !knownIds.has(p.id) && Date.now() - (p.ts || 0) < 3 * 864e5);
+    if (fresh.length && NATIVE.ok && NATIVE.polarNotify) { try { NATIVE.polarNotify(fresh); } catch {} }
+  }
   // Память ИИ: слияние облака с локальной (без дублей)
   const cloudM = await fbLoadMemory();
   if (cloudM && Array.isArray(cloudM.items) && cloudM.items.length) {
@@ -1390,9 +1406,44 @@ function renderSettings() {
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
       <div class="st-sub" style="margin-top:8px">Экспорт — страховка от потери: сохраняй файл почаще. Импорт — перенос на новое устройство или восстановление.</div>
     </div>
+    ${NATIVE.ok ? `<div class="card"><div class="card-label">🔔 Напоминание</div>
+      <div class="st-sub">Каждый день в выбранное время напомнит отметить готовность. Работает, даже если приложение закрыто.</div>
+      <div class="st-kv"><span>Время</span><input type="time" value="${esc(NATIVE.get().time)}" onchange="nremTime(this.value)" style="background:var(--s1);border:1px solid var(--s3);border-radius:10px;color:var(--fg);padding:6px 10px;font:inherit"></div>
+      <button class="btn-home" style="margin:10px 0 8px" onclick="nremToggle()">${NATIVE.get().on ? '✅ Включено — выключить' : '⏰ Включить напоминание'}</button>
+      <button class="btn-home" style="margin:0" onclick="nremTest()">🔔 Прислать тестовое сейчас</button>
+      <div class="card-label" style="margin-top:16px">📰 Итоги дня</div>
+      <div class="st-sub">Раз в день — короткое доброе сообщение: серия дней, тренировки за неделю, готовность. Текст каждый день новый, без спама.</div>
+      <div class="st-kv"><span>Время</span><input type="time" value="${esc(NATIVE.dailyGet().time)}" onchange="dailyTime(this.value)" style="background:var(--s1);border:1px solid var(--s3);border-radius:10px;color:var(--fg);padding:6px 10px;font:inherit"></div>
+      <button class="btn-home" style="margin:10px 0 0" onclick="dailyToggle()">${NATIVE.dailyGet().on ? '✅ Включено — выключить' : '📰 Включить итоги дня'}</button></div>` : ''}
     <div class="card"><div class="card-label">Приложение</div>
       <div class="st-kv"><span>Связь</span><span>${navigator.onLine ? 'онлайн' : 'офлайн'}</span></div>
-      <div class="st-kv"><span>Версия</span><span>APEX AI · 06.11.2026 · 5</span></div></div>`;
+      <div class="st-kv"><span>Версия</span><span>APEX AI · 09.11.2026 · 6${NATIVE.ok ? ' · приложение' : ''}</span></div></div>`;
+}
+async function nremToggle() {
+  const s = NATIVE.get();
+  const r = await NATIVE.arm(!s.on, s.time);
+  if (!r.ok) { alert(r.why || 'Не получилось'); return; }
+  renderSettings();
+}
+async function nremTime(v) {
+  const s = NATIVE.get();
+  const r = await NATIVE.arm(s.on, v);
+  if (!r.ok) { alert(r.why || 'Не получилось'); renderSettings(); }
+}
+async function nremTest() {
+  const r = await NATIVE.test();
+  if (!r.ok) alert(r.why || 'Не получилось');
+}
+async function dailyToggle() {
+  const s = NATIVE.dailyGet();
+  const r = await NATIVE.dailyArm(!s.on, s.time);
+  if (!r.ok) { alert(r.why || 'Не получилось'); return; }
+  renderSettings();
+}
+async function dailyTime(v) {
+  const s = NATIVE.dailyGet();
+  const r = await NATIVE.dailyArm(s.on, v);
+  if (!r.ok) { alert(r.why || 'Не получилось'); renderSettings(); }
 }
 function streakDays() {
   const set = new Set(getEntries().map(e => localDay(e.ts)));
@@ -1418,6 +1469,10 @@ function deltaTxt(a, b, unit, dec) {
   return (d > 0 ? '▲ +' : '▼ −') + Math.abs(d).toFixed(dec ? 1 : 0) + (unit || '') + ' к прошлой неделе';
 }
 
+// ── Эмблема и щит КХЛ для шапки (как на чехле) ──
+const CASE_EMBLEM = `<svg viewBox="0 0 240 192" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><clipPath id="emTri"><path d="M127 8 L231 183 L11 183 Z"/></clipPath><pattern id="emStr" width="30" height="30" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect x="0" y="0" width="17" height="30" fill="#3dff8c"/></pattern></defs><g clip-path="url(#emTri)"><rect x="-40" y="-40" width="320" height="270" fill="url(#emStr)"/></g><path d="M84 94 L108 64 L115 68 L140 186 L106 186 L96 178 L84 170 L88 162 L80 152 L86 146 L78 140 L85 132 L66 124 L86 106 L82 98 Z" fill="#070709"/></svg>`;
+const KHL_BADGE = `<svg viewBox="0 0 44 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M22 2 L40 7 V26 C40 38 32 45 22 50 C12 45 4 38 4 26 V7 Z" fill="none" stroke="#3dff8c" stroke-width="2.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="900" fill="#3dff8c">К</text><text x="31" y="17" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="900" fill="#3dff8c">Х</text><g stroke="#3dff8c" stroke-width="2.4" stroke-linecap="round"><line x1="14" y1="22" x2="30" y2="38"/><line x1="30" y1="22" x2="14" y2="38"/></g><text x="22" y="44" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="900" fill="#3dff8c">Л</text></svg>`;
+
 function renderHome() {
   const el = document.getElementById('home-body');
   if (!el) return;
@@ -1429,13 +1484,14 @@ function renderHome() {
   const todayW = getWorkouts().filter(w => localDay(w.ts) === todayK).sort((a, b) => b.ts - a.ts);
   const streak = streakDays();
 
-  // ── шапка
-  let html = `<div class="hm-hdr"><div>
-      <div class="hm-brandrow"><img class="hm-logo" src="logo192.png" alt="Эмблема клуба"><div class="hm-brand">APEX</div></div>
+  // ── шапка-кейс: DM, эмблема, КХЛ (как на чехле)
+  let html = `<div class="case-hero"><div class="ch-top"><div>
       <div class="home-greeting" style="margin-bottom:2px">${greeting()}</div>
       <div class="hm-name">ДМИТРИЙ</div>
       <div class="hm-date">${ruDate()}</div>
-    </div><div class="hm-tools">${streak >= 1 ? `<div class="hm-streak"><b>🔥 ${streak}</b><span>${streak % 10 === 1 && streak !== 11 ? 'день' : 'дн.'} подряд</span></div>` : ''}<button class="hm-factbtn" onclick="factSheetOpen()" title="Факт дня и подсказки">📌</button></div></div>`;
+    </div><div class="ch-right"><div class="ch-dm">DM</div><div class="ch-tools">${streak >= 1 ? `<div class="hm-streak"><b>🔥 ${streak}</b><span>${streak % 10 === 1 && streak !== 11 ? 'день' : 'дн.'} подряд</span></div>` : ''}<button class="hm-factbtn" onclick="factSheetOpen()" title="Факт дня и подсказки">📌</button></div></div></div>
+    <div class="ch-emblem">${CASE_EMBLEM}</div>
+    <div class="ch-khl">${KHL_BADGE}</div></div>`;
 
   // ── главный блок: готовность
   if (entry && reco) {
@@ -1618,7 +1674,7 @@ async function aiFactFetch(force) {
   if (!force && s.d === todayKey() && s.t) return;
   window._aifactBusy = true;
   const el = document.getElementById('tip-fact');
-  if (el) el.innerHTML = '🤖 Придумываю новый факт…';
+  if (force && el) el.innerHTML = '🤖 Придумываю новый факт…'; // без force — тихо в фоне: на экране остаётся мгновенный локальный факт
   const prev = (s.hist || []).slice(-5).map(x => '· ' + x).join('\n');
   const prompt = 'Придумай ОДИН короткий удивительный научно подтверждённый факт для хоккейного вратаря — спортсмена. '
     + 'Тема на выбор: наука о сне и восстановлении, нервная система и скорость реакции, зрение и чтение игры, психология и концентрация, физиология холода и льда, спортивная наука, эволюция вратарского стиля. '
@@ -1633,7 +1689,7 @@ async function aiFactFetch(force) {
       const el2 = document.getElementById('tip-fact');
       if (el2) el2.innerHTML = '📌 <b>Факт дня.</b> ' + esc(t) + ' <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button>';
     }
-  } catch (e) { /* нет сети или ключа — остаётся статический факт */ }
+  } catch (e) { if (force && el) el.innerHTML = '📌 <b>Факт дня.</b> ' + esc(aiFactGet()) + ' <button class="tip-ref" onclick="aiFactFetch(true)" title="Другой факт">⟳</button>'; }
   window._aifactBusy = false;
 }
 function aiFactMaybe() { const s = aiFactStore(); if (!(s.d === todayKey() && s.t)) aiFactFetch(false); }
@@ -3135,6 +3191,7 @@ function importJSON(input) {
         if (k && !mp[k]) { mp[k] = p; nP++; }
       });
       try { localStorage.setItem('gt_polar', JSON.stringify(Object.values(mp))); } catch {}
+      if (nP > 0 && NATIVE.ok && NATIVE.polarNotify) { try { NATIVE.polarNotify(getPolar()); } catch {} }
       if (d.goal) { try { localStorage.setItem('gt_goal', String(d.goal)); } catch {} }
       // досылаем новое в облако, если оно доступно
       let up = 0;
@@ -3248,13 +3305,119 @@ function hideSplash() {
   sp.classList.add('hide');
   setTimeout(() => { sp.remove(); }, 600);
 }
+// ─── Нативное приложение (Capacitor): напоминания, работающие на закрытом экране ───
+const NATIVE = (() => {
+  try { if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return { ok: false }; } catch { return { ok: false }; }
+  const LN = () => window.Capacitor.Plugins.LocalNotifications;
+  const get = () => ({ on: localStorage.getItem('gt_nrem_on') === '1', time: localStorage.getItem('gt_nrem_time') || '09:00' });
+  async function perm() {
+    try {
+      const s = await LN().checkPermissions();
+      if (s.display === 'granted') return true;
+      const r = await LN().requestPermissions();
+      return r.display === 'granted';
+    } catch { return false; }
+  }
+  async function arm(on, time) {
+    const t = time || '09:00';
+    const [h, m] = t.split(':').map(Number);
+    if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return { ok: false, why: 'Неправильное время' };
+    localStorage.setItem('gt_nrem_time', t);
+    try {
+      await LN().cancel({ notifications: [{ id: 100 }] }).catch(() => {});
+      if (!on) { localStorage.setItem('gt_nrem_on', '0'); return { ok: true }; }
+      if (!(await perm())) return { ok: false, why: 'Нет разрешения на уведомления — включи его в Настройках iPhone' };
+      await LN().schedule({ notifications: [{ id: 100, title: 'APEX 🏒', body: 'Отметь готовность — полминуты: сон, энергия, настроение.', schedule: { on: { hour: h, minute: m }, allowWhileIdle: true } }] });
+      localStorage.setItem('gt_nrem_on', '1');
+      return { ok: true };
+    } catch (e) { return { ok: false, why: String((e && e.message) || e) };
+    }
+  }
+  async function test() {
+    if (!(await perm())) return { ok: false, why: 'Нет разрешения на уведомления — включи его в Настройках iPhone' };
+    try { await LN().schedule({ notifications: [{ id: 101, title: 'APEX 🏒', body: 'Это тестовое уведомление — всё работает!' }] }); return { ok: true }; }
+    catch (e) { return { ok: false, why: String((e && e.message) || e) };
+    }
+  }
+  // ── «Итоги дня»: раз в день доброе сообщение с результатами; текст каждый день новый ──
+  const DAILY_MOOD = [
+    'Работа на льду окупается.',
+    'Ты становишься надёжнее в раме.',
+    'Форма набирает ход.',
+    'Отличный темп — не сбавляй.',
+    'Такая дисциплина видна в каждом матче.',
+    'Тело помнит каждую тренировку.',
+    'Маленькие шаги каждый день — большая форма в сезоне.',
+    'Собранность сегодня — уверенность в матче.',
+    'Держишь ритм, которым гордятся тренеры.',
+    'Настоящие вратари строятся из таких дней.',
+    'Ещё один кирпич в твою стену.',
+    'Продолжай — результат уже близко.'
+  ];
+  function buildDailyBody() {
+    const st = streakDays();
+    const e = getTodayEntry();
+    const pct = e ? pctOf(e) : null;
+    const w7 = getWorkouts().filter(w => w.type !== 'rest' && Date.now() - (w.ts || 0) < 7 * 864e5).length;
+    const wkWord = n => (n % 10 === 1 && n !== 11) ? 'тренировка' : (n % 10 >= 2 && n % 10 <= 4 && (n < 12 || n > 14)) ? 'тренировки' : 'тренировок';
+    const parts = [];
+    if (st >= 2) parts.push('серия ' + st + ' дн. подряд');
+    if (w7 > 0) parts.push(w7 + ' ' + wkWord(w7) + ' за неделю');
+    if (pct != null) parts.push('готовность ' + pct + '%');
+    let seq = 0; try { seq = parseInt(localStorage.getItem('gt_daily_seq') || '0', 10) || 0; } catch {}
+    try { localStorage.setItem('gt_daily_seq', String(seq + 1)); } catch {}
+    const mood = DAILY_MOOD[seq % DAILY_MOOD.length];
+    return parts.length ? mood + ' ' + parts.join(', ') + ' 🏒' : mood + ' Отметь день в APEX — и увидишь свою динамику.';
+  }
+  const dailyGet = () => ({ on: localStorage.getItem('gt_daily_on') === '1', time: localStorage.getItem('gt_daily_time') || '19:00' });
+  async function dailyArm(on, time) {
+    const t = time || '19:00';
+    const [h, m] = t.split(':').map(Number);
+    if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return { ok: false, why: 'Неправильное время' };
+    localStorage.setItem('gt_daily_time', t);
+    try {
+      await LN().cancel({ notifications: [{ id: 102 }] }).catch(() => {});
+      if (!on) { localStorage.setItem('gt_daily_on', '0'); return { ok: true }; }
+      if (!(await perm())) return { ok: false, why: 'Нет разрешения на уведомления — включи его в Настройках iPhone' };
+      const when = new Date();
+      when.setHours(h, m, 0, 0);
+      if (when.getTime() <= Date.now() + 60 * 1000) when.setDate(when.getDate() + 1);
+      await LN().schedule({ notifications: [{ id: 102, title: 'APEX 🏒 · итоги дня', body: buildDailyBody(), schedule: { at: when, allowWhileIdle: true } }] });
+      localStorage.setItem('gt_daily_on', '1');
+      return { ok: true };
+    } catch (e) { return { ok: false, why: String((e && e.message) || e) };
+    }
+  }
+  async function dailyRefresh() {
+    try { const s = dailyGet(); if (!s.on) return; const p = await LN().checkPermissions(); if (p.display === 'granted') await dailyArm(true, s.time); } catch {}
+  }
+  async function polarNotify(list) {
+    try {
+      if (!list || !list.length) return;
+      const p = list.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+      const min = Math.max(1, Math.round((p.duration || 0) / 60));
+      let body = 'Тренировка с пульсометра: ' + min + ' мин';
+      if (p.hr_avg) body += ' · пульс ср. ' + p.hr_avg + (p.hr_max ? ' / макс. ' + p.hr_max : '');
+      body += '. Она уже в APEX — дополни её 🏒';
+      if (!(await perm())) return;
+      await LN().cancel({ notifications: [{ id: 110 }] }).catch(() => {});
+      await LN().schedule({ notifications: [{ id: 110, title: 'APEX 🏒', body, schedule: { at: new Date(Date.now() + 800), allowWhileIdle: true } }] });
+    } catch {}
+  }
+  // перепланировать при старте: напоминание и «итоги дня», если включены и разрешение есть
+  (async () => { try { const s = get(); const p = await LN().checkPermissions(); if (p.display !== 'granted') return; if (s.on) arm(true, s.time); await dailyRefresh(); } catch {} })();
+  return { ok: true, get, arm, test, dailyGet, dailyArm, dailyRefresh, polarNotify };
+})();
+
 (function init() {
   setTimeout(hideSplash, 1500);
   document.getElementById('splash').addEventListener('click', hideSplash);
   renderHome();
   applyUrlParams();
   maybeOpenQ();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderHome(); maybeOpenQ(); } });
+  // Факт дня: тихая предзагрузка в фоне — к открытию шторки он уже готов
+  setTimeout(() => { try { aiFactMaybe(); } catch {} }, 2500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderHome(); maybeOpenQ(); try { aiFactMaybe(); } catch {} try { NATIVE.dailyRefresh && NATIVE.dailyRefresh(); } catch {} } });
   window.addEventListener('online', () => { try { syncFromCloud(); } catch {} });
   try { if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch {}
   // Auth: показываем вход, пока не авторизован
